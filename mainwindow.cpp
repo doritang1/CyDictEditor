@@ -21,7 +21,8 @@ MainWindow::~MainWindow()
 void MainWindow::on_toolButtonFileSelect_clicked()
 {
     //작업할 Directory를 선택한다.
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -65,16 +66,105 @@ void MainWindow::on_pushButtonVerify_clicked()
     text = ui->plainTextEditContent->toPlainText();
     //ui->plainTextEditContent->clear();
 
-    QXmlStreamReader verifier(text);
-    verifyHtml(verifier);
+    //공백문자가 있으면 루프 순환이 어긋난다.
+    text.simplified();
+
+    reader.addData(text);
+
+    reader.readNext();
+    while(!reader.atEnd()){
+        if(reader.isStartElement()){
+            if(reader.name() == "html"){
+                readHtmlElement();
+            }
+        }else{
+            reader.readNext();
+        }
+    }
 }
 
-void MainWindow::verifyHtml(QXmlStreamReader &r){
+void MainWindow::readHtmlElement()
+{
+    reader.readNext();
+    while(!reader.atEnd()){
+        if (reader.isEndElement()) {
+            reader.readNext();
+            break;
+        }
 
-    while(r.readNextStartElement()){
-        if(r.name()=="title"){
+        if(reader.isStartElement()){
+            if(reader.name() == "head"){
+                readHeadElement();
+            }else if(reader.name() == "body"){
+                readBodyElement();
+            }else{
+                skipUnknownElement();
+            }
+        }else{
+            reader.readNext();
+        }
+    }
+}
 
-            ui->lineEditWord->setText(r.tokenString());
+void MainWindow::readHeadElement()
+{
+
+    reader.readNext();
+
+    while (!reader.atEnd()) {
+        if (reader.isEndElement()) {
+            reader.readNext();
+            //break;
+        }
+
+        if (reader.isStartElement()) {
+            if (reader.name() == "title") {
+                qDebug()<<reader.readElementText();
+
+            } else {
+                skipUnknownElement();
+            }
+        } else {
+            reader.readNext();
+            break;
+        }
+    }
+}
+
+void MainWindow::readBodyElement()
+{
+    reader.readNext();
+    while (!reader.atEnd()) {
+        if (reader.isEndElement()) {
+            reader.readNext();
+            //break;
+        }
+
+        if (reader.isStartElement()) {
+            if (reader.name() == "p") {
+                qDebug()<<reader.readElementText();
+            } else {
+                skipUnknownElement();
+            }
+        } else {
+            reader.readNext();
+        }
+    }
+}
+
+void MainWindow::skipUnknownElement()
+{
+    reader.readNext();
+    while (!reader.atEnd()) {
+        if (reader.isEndElement()) {
+            reader.readNext();
+            break;
+        }
+
+        if (reader.isStartElement()) {
+            skipUnknownElement();
+        } else {
+            reader.readNext();
         }
     }
 }

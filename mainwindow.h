@@ -28,8 +28,12 @@ private:
     QDir dirSource;
     QStringList listSources;
     QStringListModel *modelFiles;
+    QXmlStreamReader reader;
 
-    void verifyHtml(QXmlStreamReader &r);
+    void readHtmlElement();
+    void readHeadElement();
+    void readBodyElement();
+    void skipUnknownElement();
 };
 
 #endif // MAINWINDOW_H
