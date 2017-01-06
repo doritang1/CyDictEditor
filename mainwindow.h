@@ -32,8 +32,11 @@ private:
 
     void readHtmlElement();
     void readHeadElement();
+    void readTitleElement();
     void readBodyElement();
+    void readPElement();
     void skipUnknownElement();
+
 };
 
 #endif // MAINWINDOW_H

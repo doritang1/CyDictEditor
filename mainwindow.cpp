@@ -69,10 +69,13 @@ void MainWindow::on_pushButtonVerify_clicked()
     //공백문자가 있으면 루프 순환이 어긋난다.
     text.simplified();
 
+    reader.clear();
     reader.addData(text);
 
     reader.readNext();
+
     while(!reader.atEnd()){
+
         if(reader.isStartElement()){
             if(reader.name() == "html"){
                 readHtmlElement();
@@ -86,6 +89,7 @@ void MainWindow::on_pushButtonVerify_clicked()
 void MainWindow::readHtmlElement()
 {
     reader.readNext();
+
     while(!reader.atEnd()){
         if (reader.isEndElement()) {
             reader.readNext();
@@ -101,33 +105,43 @@ void MainWindow::readHtmlElement()
                 skipUnknownElement();
             }
         }else{
+                        //qDebug()<<reader.name()<<"at else code in readHtml before2";
             reader.readNext();
+                        //qDebug()<<reader.name()<<"at else code in readHtml after2";
         }
     }
 }
 
 void MainWindow::readHeadElement()
 {
-
     reader.readNext();
 
     while (!reader.atEnd()) {
         if (reader.isEndElement()) {
             reader.readNext();
-            //break;
+            break;
         }
 
         if (reader.isStartElement()) {
             if (reader.name() == "title") {
-                qDebug()<<reader.readElementText();
-
+                readTitleElement();
             } else {
                 skipUnknownElement();
             }
         } else {
             reader.readNext();
-            break;
         }
+    }
+}
+
+void MainWindow::readTitleElement()
+{
+    //readElementText()가 불려진 이후에는 EndElement로 이동하므로
+    //isEndElement 조건식 이전에 readElementText()가 불려져야 한다.
+    ui->lineEditWord->insert(reader.readElementText());
+
+    if (reader.isEndElement()){
+        reader.readNext();
     }
 }
 
@@ -137,18 +151,30 @@ void MainWindow::readBodyElement()
     while (!reader.atEnd()) {
         if (reader.isEndElement()) {
             reader.readNext();
-            //break;
+            break;
         }
 
         if (reader.isStartElement()) {
             if (reader.name() == "p") {
-                qDebug()<<reader.readElementText();
+                readPElement();
             } else {
                 skipUnknownElement();
             }
         } else {
+
             reader.readNext();
         }
+    }
+}
+
+//가장 내부의 태그에는 isEndElement검사문에서 break를 붙이지 않는다.
+void MainWindow::readPElement()
+{
+    ui->plainTextEditDefinition->appendPlainText(reader.readElementText(QXmlStreamReader::SkipChildElements));
+
+    if (reader.isEndElement()){
+
+        reader.readNext();
     }
 }
 
