@@ -21,6 +21,8 @@ public:
 private slots:
     void on_toolButtonFileSelect_clicked();
     void on_pushButtonOpen_clicked();
+    void on_pushButtonSplit_clicked();
+
     void on_pushButtonVerify_clicked();
 
 private:
