@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QStringListModel>
 #include <QtXml>
+#include <htmlnamedentityresolver.h>
 
 namespace Ui {
 class MainWindow;
@@ -16,6 +17,7 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
+    HtmlNamedEntityResolver *htmlNamedEntityResolver = NULL;
     ~MainWindow();
 
 private slots:
@@ -38,7 +40,6 @@ private:
     void readBodyElement();
     void readPElement();
     void skipUnknownElement();
-
 };
 
 #endif // MAINWINDOW_H

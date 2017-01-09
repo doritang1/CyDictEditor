@@ -13,8 +13,10 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    htmlnamedentityresolver.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+    htmlnamedentityresolver.h
 
 FORMS    += mainwindow.ui

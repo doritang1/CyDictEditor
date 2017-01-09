@@ -63,6 +63,8 @@ void MainWindow::on_pushButtonOpen_clicked()
 //3-1: 에러발생 방지코드
 void MainWindow::on_pushButtonVerify_clicked()
 {
+
+
     //텍스트박스에 있는 내용을 별도의 버퍼에 담고 텍스트박스 내용은 지운다.
     QString text;
     text = ui->plainTextEditContent->toPlainText();
@@ -71,10 +73,12 @@ void MainWindow::on_pushButtonVerify_clicked()
     int startPos = 0;
     int offsetPos = 0;
     QStringList tokens;
-    tokens << "meta" << "link"<<"title";
+    tokens << "head" << "title" << "meta" << "link";
 
     for(int i = 0; i<tokens.size();i++){
-        if(tokens.at(i) != "title"){
+
+        if(tokens.at(i) == "meta" || tokens.at(i) == "link"){
+
             QString startToken("<"+tokens.at(i));
             QString endToken("</"+tokens.at(i)+">");
             QString startMark("<");
@@ -82,6 +86,7 @@ void MainWindow::on_pushButtonVerify_clicked()
             matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<meta")을 지정함.
             while(1){
                 offsetPos = matcher.indexIn(text, startPos);//startToken (ex: "|<meta")을 찾은 첫번째 위치를 기억한다.
+
                 if(offsetPos < 0){
                     startPos = 0;
                     break; //만약 못찾았으면 루프 탈출
@@ -101,9 +106,64 @@ void MainWindow::on_pushButtonVerify_clicked()
                     matcher.setPattern(startToken); //pattern을 "<"에서 원래의 토큰(ex: "meta")로 다시 바꾼다
                 }
             }
-        }else{
-            qDebug()<<"title token will be processed";
-        }
+        }//meta, link
+        else if(tokens.at(i) == "title"){
+
+            QString startToken("<"+tokens.at(i));
+            QString endToken("/"+tokens.at(i)+">");
+            QString startMark("<");
+            QStringMatcher matcher;
+            matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<title")을 지정함.
+            while(1){
+                offsetPos = matcher.indexIn(text, startPos);//startToken (ex: "|<title")을 찾은 첫번째 위치를 기억한다.
+                if(offsetPos < 0){
+                    startPos = 0;
+                    break; //만약 못찾았으면 루프 탈출
+                }
+                startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<title|"를 검색위치로 새로 지정함
+
+                matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "/title>")을 찾는다.
+                offsetPos = matcher.indexIn(text, startPos);
+
+                if(offsetPos >= 0){    //endToken이 찾아지면
+                    if(text.at(offsetPos - 1)== startMark) continue; //endToken(ex: "/title>") 바로 앞이 "<"이면 이상 없으므로 무시
+                    text.insert(offsetPos, startMark);  //endToken(ex: "/title>" 바로 앞에 "<"를 삽입한다.
+
+                    startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
+                    matcher.setPattern(startToken); //pattern을 endToken(ex: "/title>"에서 원래의 토큰(ex: "<title")로 다시 바꾼다
+                }
+            }
+        }//title
+        else{
+
+            QString startToken("<"+tokens.at(i));
+            QString endToken("</"+tokens.at(i)+">");
+            QString startMark("\n");
+            QStringMatcher matcher;
+            matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<head")을 지정함.
+            while(1){
+                offsetPos = matcher.indexIn(text, startPos);//startToken (ex: "|<head")을 찾은 첫번째 위치를 기억한다.
+
+                if(offsetPos < 0){
+                    startPos = 0;
+                    break; //만약 못찾았으면 루프 탈출
+                }
+                startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<head|"를 검색위치로 새로 지정함
+
+                matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "</head>")을 찾는다.
+                offsetPos = matcher.indexIn(text, startPos);
+
+                if(offsetPos >= 0){    //endToken이 찾아지면
+                    if(text.at(offsetPos - 1)== startMark) break; //endToken(ex: "/title>") 바로 앞이 "/n"이면 탈출
+                    text.insert(offsetPos, startMark);  //endToken(ex: "/title>") 바로 앞에 "/n"를 삽입한다.
+
+                    startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
+                    matcher.setPattern(startToken); //pattern을 endToken (ex: "</head>")에서 원래의 토큰(ex: "<head")로 다시 바꾼다
+
+                }
+
+            }
+        }//head
     }
     ui->plainTextEditContent->setPlainText(text);
 }
@@ -119,12 +179,15 @@ void MainWindow::on_pushButtonSplit_clicked()
     reader.clear();
     reader.addData(text);
 
-    reader.readNext();
+    //특수문자 처리를 위한 EntityResolver를 지정해준다.
+    if (htmlNamedEntityResolver == NULL) {
+        htmlNamedEntityResolver = new HtmlNamedEntityResolver();
+    }
+    reader.setEntityResolver(htmlNamedEntityResolver);
 
+    //분석 시작
+    reader.readNext();
     while(!reader.atEnd()){
-//        reader.readNext();
-//        qDebug()<<reader.name();
-//        qDebug()<<reader.tokenString();
 
         if(reader.isStartElement()){
             if(reader.name() == "html"){
@@ -184,6 +247,7 @@ void MainWindow::readHeadElement()
 
         if (reader.isStartElement()) {
             if (reader.name() == "title") {
+
                 readTitleElement();
             } else {
                 skipUnknownElement();
