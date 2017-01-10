@@ -30,41 +30,44 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
     QStringList filters;
     filters<<"*.htm";
-    listSources = dirSource.entryList(filters);
+    listSources = new QStringList(dirSource.entryList(filters));
 
     //모델을 생성하여 listView와 연결한다.
     modelFiles = new QStringListModel(this);
-    modelFiles->setStringList(listSources);
+    modelFiles->setStringList(*listSources);
     ui->listViewFiles->setModel(modelFiles);
 }
 
 //2.파일하나를 열어 전체 내용을 읽는다.
 void MainWindow::on_pushButtonOpen_clicked()
 {
-        QFile sourceFile;
-        sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
-
-        if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
-
-            //한글사용을 위해 fromLocal8Bit함수 사용
-            QString text = QString::fromLocal8Bit(sourceFile.readAll());
-            ui->plainTextEditContent->setPlainText(text);
-        }else{
-            //파일 열기에 실패하면 표시하는 메시지
-            QMessageBox *msgBox = new QMessageBox();
-            msgBox->setWindowTitle(tr("Warning!!"));
-            msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
-            msgBox->show();
-            return;
-        }
-        sourceFile.close();
+    QFile sourceFile;
+    int count = 0;
+    QStringListIterator idx(*listSources);
+    while(idx.hasNext()){
+        ++count;
+       sourceFile.setFileName(idx.next());
+       if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+           //한글사용을 위해 fromLocal8Bit함수 사용
+           stringHtml = new QString(QString::fromLocal8Bit(sourceFile.readAll()));
+           //ui->plainTextEditContent->setPlainText(*stringHtml);
+           ui->plainTextEditContent->appendPlainText(QString("word: %1 of %2").arg(count).arg(listSources->length()));
+           delete stringHtml;
+       }else{
+           //파일 열기에 실패하면 표시하는 메시지
+           QMessageBox *msgBox = new QMessageBox();
+           msgBox->setWindowTitle(tr("Warning!!"));
+           msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+           msgBox->show();
+           return;
+       }
+       sourceFile.close();
+    }
 }
 
 //3-1: 에러발생 방지코드
 void MainWindow::on_pushButtonVerify_clicked()
 {
-
-
     //텍스트박스에 있는 내용을 별도의 버퍼에 담고 텍스트박스 내용은 지운다.
     QString text;
     text = ui->plainTextEditContent->toPlainText();
@@ -76,9 +79,7 @@ void MainWindow::on_pushButtonVerify_clicked()
     tokens << "head" << "title" << "meta" << "link";
 
     for(int i = 0; i<tokens.size();i++){
-
         if(tokens.at(i) == "meta" || tokens.at(i) == "link"){
-
             QString startToken("<"+tokens.at(i));
             QString endToken("</"+tokens.at(i)+">");
             QString startMark("<");
@@ -86,7 +87,6 @@ void MainWindow::on_pushButtonVerify_clicked()
             matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<meta")을 지정함.
             while(1){
                 offsetPos = matcher.indexIn(text, startPos);//startToken (ex: "|<meta")을 찾은 첫번째 위치를 기억한다.
-
                 if(offsetPos < 0){
                     startPos = 0;
                     break; //만약 못찾았으면 루프 탈출
@@ -108,7 +108,6 @@ void MainWindow::on_pushButtonVerify_clicked()
             }
         }//meta, link
         else if(tokens.at(i) == "title"){
-
             QString startToken("<"+tokens.at(i));
             QString endToken("/"+tokens.at(i)+">");
             QString startMark("<");
@@ -121,21 +120,17 @@ void MainWindow::on_pushButtonVerify_clicked()
                     break; //만약 못찾았으면 루프 탈출
                 }
                 startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<title|"를 검색위치로 새로 지정함
-
                 matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "/title>")을 찾는다.
                 offsetPos = matcher.indexIn(text, startPos);
-
                 if(offsetPos >= 0){    //endToken이 찾아지면
                     if(text.at(offsetPos - 1)== startMark) continue; //endToken(ex: "/title>") 바로 앞이 "<"이면 이상 없으므로 무시
                     text.insert(offsetPos, startMark);  //endToken(ex: "/title>" 바로 앞에 "<"를 삽입한다.
-
                     startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
                     matcher.setPattern(startToken); //pattern을 endToken(ex: "/title>"에서 원래의 토큰(ex: "<title")로 다시 바꾼다
                 }
             }
         }//title
         else{
-
             QString startToken("<"+tokens.at(i));
             QString endToken("</"+tokens.at(i)+">");
             QString startMark("\n");
@@ -159,12 +154,10 @@ void MainWindow::on_pushButtonVerify_clicked()
 
                     startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
                     matcher.setPattern(startToken); //pattern을 endToken (ex: "</head>")에서 원래의 토큰(ex: "<head")로 다시 바꾼다
-
-                }
-
-            }
-        }//head
-    }
+                }//if(offsetPos)
+            }//while(1)
+        }//else(head)
+    }//for(int i = 0; i<tokens.size();i++)
     ui->plainTextEditContent->setPlainText(text);
 }
 
@@ -188,15 +181,14 @@ void MainWindow::on_pushButtonSplit_clicked()
     //분석 시작
     reader.readNext();
     while(!reader.atEnd()){
-
         if(reader.isStartElement()){
             if(reader.name() == "html"){
                 readHtmlElement();
             }
         }else{
             reader.readNext();
-        }
-    }
+        }//if(reader.isStartElement())
+    }//while(!reader.atEnd()
 
     //에러문 출력
     if(reader.hasError()){
@@ -205,7 +197,7 @@ void MainWindow::on_pushButtonSplit_clicked()
         qDebug()<<reader.columnNumber();
         qDebug()<<reader.characterOffset();
         qDebug()<<reader.tokenString();
-    }
+    }//if(reader.hasError())
 }
 
 //4-2:<html>태그 내부를 읽는다.
@@ -217,7 +209,7 @@ void MainWindow::readHtmlElement()
         if (reader.isEndElement()) {
             reader.readNext();
             break;
-        }
+        }//if (reader.isEndElement())
 
         if(reader.isStartElement()){
             if(reader.name() == "head"){
@@ -226,13 +218,11 @@ void MainWindow::readHtmlElement()
                 readBodyElement();
             }else{
                 skipUnknownElement();
-            }
+            }//if(reader.name() == "head"
         }else{
-                        //qDebug()<<reader.name()<<"at else code in readHtml before2";
             reader.readNext();
-                        //qDebug()<<reader.name()<<"at else code in readHtml after2";
-        }
-    }
+        }//if(reader.isStartElement())
+    }//while(!reader.atEnd())
 }
 
 //4-3:<head>태그 내부를 읽는다.
@@ -243,7 +233,7 @@ void MainWindow::readHeadElement()
         if (reader.isEndElement()) {
             reader.readNext();
             break;
-        }
+        }//if (reader.isEndElement())
 
         if (reader.isStartElement()) {
             if (reader.name() == "title") {
@@ -254,8 +244,8 @@ void MainWindow::readHeadElement()
             }
         } else {
             reader.readNext();
-        }
-    }
+        }//if (reader.isStartElement())
+    }//while (!reader.atEnd())
 }
 
 //4-4<title>태그를 읽는다.
@@ -278,17 +268,17 @@ void MainWindow::readBodyElement()
         if (reader.isEndElement()) {
             reader.readNext();
             break;
-        }
+        }//if (reader.isEndElement())
 
         if (reader.isStartElement()) {
             if (reader.name() == "p") {
                 readPElement();
             } else {
                 skipUnknownElement();
-            }
+            }//if (reader.name() == "p")
         } else {
             reader.readNext();
-        }
+        }//if (reader.isStartElement())
     }
 }
 
@@ -315,32 +305,43 @@ void MainWindow::readPElement()
                 }else{
                     pStr += "<" + reader.name().toString() + ">"; //"class" attribute가 없으면 태그만 그대로 붙여준다.
                 }
-            }
+            }//if(reader.name() == ?)
         }else if(reader.isEndElement()){ //endelement도 마찬가지다.
             if(reader.name() == "p" || reader.name() == "font" || reader.name() == "body" || reader.name() == "html"){
                 reader.readNext();
                 continue;
             }else{
                 pStr += "</"+ reader.name().toString() + ">";
-            }
-        }
+            }//if(reader.name() == ?)
+        }//else if(reader.isEndElement())
         reader.readNext();
-    }
+    }//while(!reader.atEnd())
 
-    //umlaut 있는 타이틀을 뽑아낸다.
+    //타이틀 추출하여 움라우트를 가지고 있으면
     QString titleUml;
     int beginTitlePos = 0;
     int endTitlePos = 0;
     while(1){
-        beginTitlePos = indexOf("<b>") + 3;
-        if(beginTitlePos <= 3) break;
-        endTitlePos = pStr.indexOf("</b>");
-        titleUml = pStr.mid(beginTitlePos, endTitlePos-beginTitlePos).remove(QRegExp("<[^>]*>"));
+        beginTitlePos = pStr.indexOf("<b>", beginTitlePos);
+        if(beginTitlePos < 0) break;
+        endTitlePos = pStr.indexOf("</b>", beginTitlePos);
+        titleUml += pStr.mid(beginTitlePos, endTitlePos-beginTitlePos).remove(QRegExp("<[^>]*>"));
         titleUml = titleUml.remove("|").remove(".");
-
+        beginTitlePos = endTitlePos;
     }
-    ui->lineEditWord->insert(titleUml);
 
+    //umlaut가 있는 타이틀을 뽑아낸다.
+    QStringList uml;
+    uml<<"Ä"<<"Ö"<<"Ü"<<"ä"<<"ö"<<"ü"<<"ß";
+    QStringListIterator itor(uml);
+
+    //umlaut를 가지고 있는지 검사
+    while(itor.hasNext()){
+        if(titleUml.contains(itor.next().toUtf8().constData())){
+            ui->lineEditWord->insert(titleUml);
+            break;
+        }
+    }//while(itor.hasNext())
 
     //전체 body문을 출력한다.
     ui->plainTextEditDefinition->setPlainText(pStr.trimmed());
