@@ -292,14 +292,64 @@ void MainWindow::readBodyElement()
     }
 }
 
-//4-6: <p>태그를 읽는다. 가장 내부의 <p>태그에는 isEndElement검사문에서 break를 붙이지 않는다.
+//4-6: <p>태그를 읽는다.
 void MainWindow::readPElement()
 {
-    ui->plainTextEditDefinition->appendPlainText(reader.readElementText(QXmlStreamReader::IncludeChildElements));
+    QString pStr;
 
-    if (reader.isEndElement()){
+    reader.readNext();
+    while(!reader.atEnd()){
+        if(reader.tokenType() == QXmlStreamReader::Characters){
+            //pStr += reader.text().toString().replace("<","&lt;").replace(">","&gt;"); //글자들을 읽어나가다가(단, <와 >는 &lt;와 &gt;로 남겨둠)
+            pStr += reader.text().toString().toHtmlEscaped(); //글자들을 읽어나가다가(단, <와 >는 &lt;와 &gt;로 남겨둠)
+        }else if(reader.isStartElement()){
+            if(reader.name() == "p"){ // startelement을 만나고 그것이 <p>면
+                reader.readNext();
+                continue;
+            }else if(reader.name() == "font"){ // startelement을 만나고 그것이 <font>면
+                reader.readNextStartElement();
+                continue;
+            }else{ // startelement을 만나고 그것이 <span> 또는 <u>,<sup>이면
+                if(reader.attributes().hasAttribute("class")){ // "class" attribute를 가지고 있으면 그대로 표시하고
+                    pStr += "<" + reader.name().toString() + " class=\"" + reader.attributes().value("class").toString() + "\">"; //태그를 그대로 붙여준다.
+                }else{
+                    pStr += "<" + reader.name().toString() + ">"; //"class" attribute가 없으면 태그만 그대로 붙여준다.
+                }
+            }
+        }else if(reader.isEndElement()){ //endelement도 마찬가지다.
+            if(reader.name() == "p" || reader.name() == "font" || reader.name() == "body" || reader.name() == "html"){
+                reader.readNext();
+                continue;
+            }else{
+                pStr += "</"+ reader.name().toString() + ">";
+            }
+        }
         reader.readNext();
     }
+
+    //umlaut 있는 타이틀을 뽑아낸다.
+    QString titleUml;
+    int beginTitlePos = 0;
+    int endTitlePos = 0;
+    while(1){
+        beginTitlePos = indexOf("<b>") + 3;
+        if(beginTitlePos <= 3) break;
+        endTitlePos = pStr.indexOf("</b>");
+        titleUml = pStr.mid(beginTitlePos, endTitlePos-beginTitlePos).remove(QRegExp("<[^>]*>"));
+        titleUml = titleUml.remove("|").remove(".");
+
+    }
+    ui->lineEditWord->insert(titleUml);
+
+
+    //전체 body문을 출력한다.
+    ui->plainTextEditDefinition->setPlainText(pStr.trimmed());
+
+// 태그를 무시하고 내용만 읽어내는 코드
+//    ui->plainTextEditDefinition->appendPlainText(reader.readElementText(QXmlStreamReader::IncludeChildElements));
+//    if (reader.isEndElement()){
+//        reader.readNext();
+//    }
 }
 
 //4-7: 알려지지 않은 태그는 건너뛴다.
