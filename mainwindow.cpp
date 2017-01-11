@@ -24,9 +24,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -53,6 +53,7 @@ void MainWindow::on_pushButtonOpen_clicked()
            //한글사용을 위해 fromLocal8Bit함수 사용
            *stringHtml = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
            if(verifyHtml()){ //이상 없는지 점검하고
+
                strlstHtmls->append(*stringHtml); //StringList에 담는다.
            }
        }else{
@@ -87,6 +88,7 @@ bool MainWindow::verifyHtml()
     tokens << "head" << "title" << "meta" << "link" << "SPAN" << "br" << "Object" << "param" << "p";
 
     for(int i = 0; i<tokens.size();i++){
+
         if(tokens.at(i) == "meta" || tokens.at(i) == "link"){
             QString startToken("<"+tokens.at(i));
             QString endToken("</"+tokens.at(i)+">");
@@ -169,7 +171,17 @@ bool MainWindow::verifyHtml()
         else if(tokens.at(i) == "SPAN"){
             *stringHtml = stringHtml->replace("<SPAN", "<span"); //대문자를 소문자로
             *stringHtml = stringHtml->replace("</SPAN", "</span");
-        }//SPAN
+
+            //span태그의 class 애트리뷰트에서 따옴표가 없음
+            int s = 0;
+            int e = 0;
+            s = stringHtml->indexOf(QRegExp("class=[^\"].*[^\"]>"));
+            if(s>0){
+                e = stringHtml->indexOf(">",s);
+                *stringHtml = stringHtml->insert(e,"\"");
+                *stringHtml = stringHtml->insert(s+6,"\"");
+            }
+        }//SPAN이 대문자
         else if(tokens.at(i) == "br"){
             *stringHtml = stringHtml->remove("<br>"); //<br> 제거
         }//br
@@ -177,10 +189,49 @@ bool MainWindow::verifyHtml()
             *stringHtml = stringHtml->remove(QRegExp("<Object[^>]*>"));
             *stringHtml = stringHtml->remove(QRegExp("<param[^>]*>"));
         }//Object, param
-        else if(tokens.at(i) == "p"){
-            *stringHtml = stringHtml->replace("<p>&nbsp;", "<p>&nbsp;</p>");
+        else if(tokens.at(i) == "p" || tokens.at(i) == "b"){
+                                   qDebug()<<*stringHtml;
+            *stringHtml = stringHtml->replace("<P>", "<p>"); //P가 대문자
+            *stringHtml = stringHtml->replace("</P>", "</p>");
+            if(stringHtml->indexOf("<p>&nbsp;</p>")<0){ //"<p>&nbsp;</p>"를 찾을 수 없으면
+                *stringHtml = stringHtml->replace("<p>&nbsp;", "<p>&nbsp;</p>");
+            }
+            *stringHtml = stringHtml->replace("<B>", "<b>"); //B가 대문자
+            *stringHtml = stringHtml->replace("</B>", "</b>");
 
-        }//p: <&nbsp
+            //<p>와 </p>사이에 "\n"(줄바꿈)이 있다. </p>가 없다.
+            int s = 0;
+            int e = 0;
+            QString strBefore;
+            QString strAfter;
+            while(1){
+                s = stringHtml->indexOf("<p>",s);
+                if(s>0){
+                    e = stringHtml->indexOf("</p>",s);
+                    if(e>0){
+                        strBefore = stringHtml->mid(s+3,e-(s+3));
+                        strAfter = strBefore;
+                        if(strBefore.contains("\n")){
+                            strAfter = strAfter.replace("\n", " ").toUtf8();
+
+
+                        }
+                    }else{  //</p>가 없다.
+                        strBefore = stringHtml->mid(s+3,e-(s+3));
+                        strAfter = strBefore;
+                        strAfter = strAfter.append("</p>");
+
+                    }
+                }else{
+                    break;
+                }
+                s = e+4;
+                e = 0;
+            }
+
+            *stringHtml = stringHtml->replace(strBefore, strAfter);
+
+        }//p: <&nbsp || <P> || <B>
         else {
             QString startToken("<"+tokens.at(i));
             QString endToken("</"+tokens.at(i)+">");
@@ -260,15 +311,19 @@ void MainWindow::splitHtml(QString text)
 
     //에러문 출력
     if(reader.hasError()){
-        QMessageBox::information(this, "Error!!!",
-                                 QString("%1\nLine: %2\nColumn: %3\nCharacter at: %4\nToken: %5\nHtml: %6")
-                                        .arg(reader.errorString())
-                                        .arg(reader.lineNumber())
-                                        .arg(reader.columnNumber())
-                                        .arg(reader.characterOffset())
-                                        .arg(reader.tokenString())
-                                        .arg(text),
-                                 "OK");
+//        QMessageBox::information(this, "Error!!!",
+//                                 QString("%1\nLine: %2\nColumn: %3\nCharacter at: %4\nToken: %5\nHtml: ...%6...")
+//                                        .arg(reader.errorString())
+//                                        .arg(reader.lineNumber())
+//                                        .arg(reader.columnNumber())
+//                                        .arg(reader.characterOffset())
+//                                        .arg(reader.tokenString())
+//                                        .arg(text.mid(reader.characterOffset()-10, 20)),
+//                                 "OK");
+        int s = text.indexOf("<title>");
+        int e = text.indexOf("</title>");
+        QString str = text.mid(s + 7, e-(s+7));
+        ui->plainTextEditDefinition->appendPlainText(QString("title: %1\nError: %2\nPart: %3\n").arg(str).arg(reader.errorString()).arg(text.mid(reader.characterOffset()-30, 40)));
     }//if(reader.hasError())
 }
 
