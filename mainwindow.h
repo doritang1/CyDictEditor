@@ -24,7 +24,6 @@ private slots:
     void on_toolButtonFileSelect_clicked();
     void on_pushButtonOpen_clicked();
     void on_pushButtonSplit_clicked();
-    void on_pushButtonVerify_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -32,6 +31,11 @@ private:
     QStringList *listSources;
     QString *stringHtml;
     QStringListModel *modelFiles;
+    QStringListModel *modelTitles;
+    QStringListModel *modelDefinitions;
+    QStringList *strlstHtmls;
+    QStringList *strlstTitles;
+    QStringList *strlstDefinitions;
     QXmlStreamReader reader;
 
     void readHtmlElement();
@@ -40,6 +44,9 @@ private:
     void readBodyElement();
     void readPElement();
     void skipUnknownElement();
+
+    bool verifyHtml();
+    void splitHtml(QString);
 };
 
 #endif // MAINWINDOW_H
