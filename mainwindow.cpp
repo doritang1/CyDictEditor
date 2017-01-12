@@ -312,7 +312,6 @@ void MainWindow::on_pushButtonSplit_clicked()
 
     QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()), "Cofirm");
     ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()));
-    ui->plainTextEditDefinition->setPlainText(QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()));
 }
 
 void MainWindow::splitHtml(QString text)
@@ -352,7 +351,7 @@ void MainWindow::splitHtml(QString text)
         int s = text.indexOf("<title>");
         int e = text.indexOf("</title>");
         QString str = text.mid(s + 7, e-(s+7));
-        ui->plainTextEditDefinition->appendPlainText(QString("title: %1\nError: %2\nPart: %3\n").arg(str).arg(reader.errorString()).arg(text.mid(reader.characterOffset()-30, 40)));
+        ui->plainTextEditDefinition->appendPlainText(QString("Title: %1\nError: %2\nPart: %3\n").arg(str).arg(reader.errorString()).arg(text.mid(reader.characterOffset()-30, 40)));
     }//if(reader.hasError())
 }
 
@@ -570,13 +569,12 @@ void MainWindow::on_pushButtonMerge_clicked()
 
 void MainWindow::on_pushButtonSave_clicked()
 {
-    ui->plainTextEditContent->clear();
-
     QFile targetFile;
     targetFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
     if(targetFile.open(QIODevice::WriteOnly|QIODevice::Text)){
         //한글사용을 위해 fromLocal8Bit함수 사용
         targetFile.write(ui->plainTextEditContent->toPlainText().toLocal8Bit());
+        ui->plainTextEditContent->clear();
     }else{
         //파일 열기에 실패하면 표시하는 메시지
         QMessageBox *msgBox = new QMessageBox();
