@@ -150,9 +150,6 @@
         <widget class="QListView" name="listViewWord"/>
        </item>
        <item>
-        <widget class="QListView" name="listViewDefinition"/>
-       </item>
-       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QLineEdit" name="lineEditTargetFile"/>

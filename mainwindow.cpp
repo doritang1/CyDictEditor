@@ -24,9 +24,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -38,6 +38,7 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     modelFiles = new QStringListModel(this);
     modelFiles->setStringList(*listSources);
     ui->listViewFiles->setModel(modelFiles);
+    ui->listViewFiles->setEditTriggers(QAbstractItemView::NoEditTriggers);
 }
 
 //2.파일을 하나 열어 그 내용을 읽는다.
@@ -46,6 +47,7 @@ void MainWindow::on_pushButtonOpen_clicked()
     QFile sourceFile;
     str = new QString();
     sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
+    //sourceFile.setFileName(index.data(Qt::DisplayRole).toString());
     if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
         //한글사용을 위해 fromLocal8Bit함수 사용
         *str = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
@@ -59,7 +61,51 @@ void MainWindow::on_pushButtonOpen_clicked()
         msgBox->show();
         return;
     }
-       sourceFile.close();    
+    sourceFile.close();
+}
+
+void MainWindow::on_listViewFiles_clicked(const QModelIndex &index)
+{
+    QFile sourceFile;
+    str = new QString();
+    //sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
+    sourceFile.setFileName(index.data(Qt::DisplayRole).toString());
+    if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+        //한글사용을 위해 fromLocal8Bit함수 사용
+        *str = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
+        ui->plainTextEditContent->setPlainText(*str); //보여준다.
+
+    }else{
+        //파일 열기에 실패하면 표시하는 메시지
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setWindowTitle(tr("Warning!!"));
+        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+        msgBox->show();
+        return;
+    }
+    sourceFile.close();
+}
+
+void MainWindow::on_listViewFiles_activated(const QModelIndex &index)
+{
+    QFile sourceFile;
+    str = new QString();
+    //sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
+    sourceFile.setFileName(index.data(Qt::DisplayRole).toString());
+    if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+        //한글사용을 위해 fromLocal8Bit함수 사용
+        *str = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
+        ui->plainTextEditContent->setPlainText(*str); //보여준다.
+
+    }else{
+        //파일 열기에 실패하면 표시하는 메시지
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setWindowTitle(tr("Warning!!"));
+        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+        msgBox->show();
+        return;
+    }
+    sourceFile.close();
 }
 
 //3.한 개의 파일을 점검한다.(validate)
@@ -352,25 +398,19 @@ void MainWindow::on_pushButtonSplit_clicked()
 {
     ui->plainTextEditContent->clear();
     ui->plainTextEditDefinition->clear();
-
-    strlstTitles = new QStringList();
-    strlstDefinitions = new QStringList();
-
+    ui->listViewWord->clearSelection();
     //html들이 담겨있는 리스트 strlstHtmls를 순환하면서 QXmlReader로 분석
     QStringListIterator itorHtmls(*strlstHtmls);
+    counterWord = 0;
     while(itorHtmls.hasNext()){
+        ++counterWord;
         splitHtml(itorHtmls.next());
     }
 
     //모델을 생성하여 listView와 연결한다.
     modelTitles = new QStringListModel(this);
-    modelTitles->setStringList(*strlstTitles);
+    modelTitles->setStringList(mltmapTitles.keys());
     ui->listViewWord->setModel(modelTitles);
-
-    //모델을 생성하여 listView와 연결한다.
-    modelDefinitions = new QStringListModel(this);
-    modelDefinitions->setStringList(*strlstDefinitions);
-    ui->listViewDefinition->setModel(modelDefinitions);
 
     QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()), "Cofirm");
     ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()));
@@ -470,7 +510,7 @@ void MainWindow::readTitleElement()
     //isEndElement 조건식 이전에 readElementText()가 불려져야 한다.
     QString title = reader.readElementText();
     if(title.length()>0){ //빈문자열("")은 건너뛴다.
-        strlstTitles->append(title);
+        mltmapTitles.insert(title, counterWord);
     }
 
     if (reader.isEndElement()){
@@ -508,8 +548,8 @@ void MainWindow::readPElement()
     reader.readNext();
     while(!reader.atEnd()){
         if(reader.tokenType() == QXmlStreamReader::Characters){
-            //pStr += reader.text().toString().replace("<","&lt;").replace(">","&gt;"); //글자들을 읽어나가다가(단, <와 >는 &lt;와 &gt;로 남겨둠)
-            pStr += reader.text().toString().toHtmlEscaped(); //글자들을 읽어나가다가(단, <와 >는 &lt;와 &gt;로 남겨둠)
+            //글자들을 읽어나가다가(단, <와 >는 &lt;와 &gt;로 남겨둠)
+            pStr += reader.text().toString().toHtmlEscaped();
         }else if(reader.isStartElement()){
             if(reader.name() == "p"){ // startelement을 만나고 그것이 <p>면
                 reader.readNext();
@@ -518,10 +558,15 @@ void MainWindow::readPElement()
                 reader.readNextStartElement();
                 continue;
             }else{ // startElement을 만나고 그것이 <span> 또는 <u>,<sup>이면
-                if(reader.attributes().hasAttribute("class")){ // "class" attribute를 가지고 있으면 그대로 표시하고
-                    pStr += "<" + reader.name().toString() + " class=\"" + reader.attributes().value("class").toString() + "\">"; //태그를 그대로 붙여준다.
+                // "class" attribute를 가지고 있으면 그대로 표시하고
+                if(reader.attributes().hasAttribute("class")){
+                    pStr += "<" + reader.name().toString()
+                            + " class=\""
+                            + reader.attributes().value("class").toString()
+                            + "\">"; //태그를 그대로 붙여준다.
                 }else{
-                    pStr += "<" + reader.name().toString() + ">"; //"class" attribute가 없으면 태그만 그대로 붙여준다.
+                    //"class" attribute가 없으면 태그만 그대로 붙여준다.
+                    pStr += "<" + reader.name().toString() + ">";
                 }
             }//if(reader.name() == ?)
         }else if(reader.isEndElement()){ //endelement도 마찬가지다.
@@ -556,13 +601,14 @@ void MainWindow::readPElement()
     //umlaut를 가지고 있는지 검사
     while(itor.hasNext()){
         if(titleUml.contains(itor.next().toUtf8().constData())){
-            strlstTitles->append(titleUml);
+            mltmapTitles.insert(titleUml, counterWord);
             break;
         }
     }//while(itor.hasNext())
 
     //전체 body문을 출력한다.
-    strlstDefinitions->append(pStr.trimmed());
+    //strlstDefinitions->append(pStr.trimmed());
+    mapDefinitions.insert(counterWord, pStr.trimmed());
 
 // 태그를 무시하고 내용만 읽어내는 코드
 //    ui->plainTextEditDefinition->appendPlainText(reader.readElementText(QXmlStreamReader::IncludeChildElements));
@@ -586,5 +632,18 @@ void MainWindow::skipUnknownElement()
         } else {
             reader.readNext();
         }
+    }
+}
+
+void MainWindow::on_listViewWord_clicked(const QModelIndex &index)
+{
+    QString word = index.data(Qt::DisplayRole).toString();
+    ui->lineEditWord->clear();
+    ui->lineEditWord->insert(word);
+    QList<int> words = mltmapTitles.values(word);
+    QListIterator<int> id(words);
+    while(id.hasNext()){
+        ui->plainTextEditDefinition->clear();
+        ui->plainTextEditDefinition->appendHtml(mapDefinitions.value(id.next()));
     }
 }
