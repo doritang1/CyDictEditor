@@ -54,6 +54,7 @@ private:
 
     bool validateHtml(QString *);
     void splitHtml(QString);
+
 };
 
 #endif // MAINWINDOW_H

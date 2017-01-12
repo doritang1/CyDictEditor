@@ -62,7 +62,15 @@ void MainWindow::on_pushButtonOpen_clicked()
        sourceFile.close();    
 }
 
-//3: 에러발생 방지코드
+//3.한 개의 파일을 점검한다.(validate)
+void MainWindow::on_pushButtonValidate_clicked()
+{
+    if(validateHtml(str)){ //이상 없는지 점검하고
+        ui->plainTextEditContent->setPlainText(*str);
+    }
+}
+
+//3-1: 에러발생 방지코드
 bool MainWindow::validateHtml(QString *strHtml)
 {
     int startPos = 0;
@@ -285,7 +293,61 @@ bool MainWindow::validateHtml(QString *strHtml)
     return true;
 }
 
-//4-1: title과 body문을 추출한다.
+//4: 한 개의 파일을 수정후 저장
+void MainWindow::on_pushButtonSave_clicked()
+{
+    QFile targetFile;
+    targetFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
+    if(targetFile.open(QIODevice::WriteOnly|QIODevice::Text)){
+        //한글사용을 위해 fromLocal8Bit함수 사용
+        targetFile.write(ui->plainTextEditContent->toPlainText().toLocal8Bit());
+        ui->plainTextEditContent->clear();
+    }else{
+        //파일 열기에 실패하면 표시하는 메시지
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setWindowTitle(tr("Warning!!"));
+        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+        msgBox->show();
+        return;
+    }
+       targetFile.close();
+}
+
+//5: 모든 파일내용을 한개의 리스트로 옮긴다.(merge)
+void MainWindow::on_pushButtonMerge_clicked()
+{
+    ui->plainTextEditContent->clear();
+    ui->plainTextEditDefinition->clear();
+
+    QFile sourceFile;
+    QStringListIterator itorFiles(*listSources); //파일의 리스트 작성
+    stringHtml = new QString();
+    strlstHtmls = new QStringList();
+    while(itorFiles.hasNext()){ //리스트를 순환하면서
+         sourceFile.setFileName(itorFiles.next());
+       if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+           //한글사용을 위해 fromLocal8Bit함수 사용
+           *stringHtml = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
+           if(validateHtml(stringHtml)){ //이상 없는지 점검하고
+
+               strlstHtmls->append(*stringHtml); //StringList에 담는다.
+           }
+       }else{
+           //파일 열기에 실패하면 표시하는 메시지
+           QMessageBox *msgBox = new QMessageBox();
+           msgBox->setWindowTitle(tr("Warning!!"));
+           msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+           msgBox->show();
+           return;
+       }
+       sourceFile.close();
+    }
+    QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()), "Cofirm");
+    ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()));
+    ui->plainTextEditDefinition->setPlainText(QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()));
+}
+
+//6: title과 body문을 추출한다.
 void MainWindow::on_pushButtonSplit_clicked()
 {
     ui->plainTextEditContent->clear();
@@ -355,7 +417,7 @@ void MainWindow::splitHtml(QString text)
     }//if(reader.hasError())
 }
 
-//4-2:<html>태그 내부를 읽는다.
+//6-1:<html>태그 내부를 읽는다.
 void MainWindow::readHtmlElement()
 {
     reader.readNext();
@@ -379,7 +441,7 @@ void MainWindow::readHtmlElement()
     }//while(!reader.atEnd())
 }
 
-//4-3:<head>태그 내부를 읽는다.
+//6-2:<head>태그 내부를 읽는다.
 void MainWindow::readHeadElement()
 {
     reader.readNext();
@@ -401,7 +463,7 @@ void MainWindow::readHeadElement()
     }//while (!reader.atEnd())
 }
 
-//4-4<title>태그를 읽는다.
+//6-3<title>태그를 읽는다.
 void MainWindow::readTitleElement()
 {
     //readElementText()가 불려진 이후에는 EndElement로 이동하므로
@@ -416,7 +478,7 @@ void MainWindow::readTitleElement()
     }
 }
 
-//4-5: <body>태그를 읽는다.
+//6-4: <body>태그를 읽는다.
 void MainWindow::readBodyElement()
 {
     reader.readNext();
@@ -438,7 +500,7 @@ void MainWindow::readBodyElement()
     }
 }
 
-//4-6: <p>태그를 읽는다.
+//6-5: <p>태그를 읽는다.
 void MainWindow::readPElement()
 {
     QString pStr;
@@ -509,7 +571,7 @@ void MainWindow::readPElement()
 //    }
 }
 
-//4-7: 알려지지 않은 태그는 건너뛴다.
+//6-6: 알려지지 않은 태그는 건너뛴다.
 void MainWindow::skipUnknownElement()
 {
     reader.readNext();
@@ -525,64 +587,4 @@ void MainWindow::skipUnknownElement()
             reader.readNext();
         }
     }
-}
-
-void MainWindow::on_pushButtonValidate_clicked()
-{
-    if(validateHtml(str)){ //이상 없는지 점검하고
-        ui->plainTextEditContent->setPlainText(*str);
-    }
-}
-
-void MainWindow::on_pushButtonMerge_clicked()
-{
-    ui->plainTextEditContent->clear();
-    ui->plainTextEditDefinition->clear();
-
-    QFile sourceFile;
-    QStringListIterator itorFiles(*listSources); //파일의 리스트 작성
-    stringHtml = new QString();
-    strlstHtmls = new QStringList();
-    while(itorFiles.hasNext()){ //리스트를 순환하면서
-         sourceFile.setFileName(itorFiles.next());
-       if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
-           //한글사용을 위해 fromLocal8Bit함수 사용
-           *stringHtml = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
-           if(validateHtml(stringHtml)){ //이상 없는지 점검하고
-
-               strlstHtmls->append(*stringHtml); //StringList에 담는다.
-           }
-       }else{
-           //파일 열기에 실패하면 표시하는 메시지
-           QMessageBox *msgBox = new QMessageBox();
-           msgBox->setWindowTitle(tr("Warning!!"));
-           msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
-           msgBox->show();
-           return;
-       }
-       sourceFile.close();
-    }
-    QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()), "Cofirm");
-    ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()));
-    ui->plainTextEditDefinition->setPlainText(QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()));
-}
-
-void MainWindow::on_pushButtonSave_clicked()
-{
-    QFile targetFile;
-    targetFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
-    if(targetFile.open(QIODevice::WriteOnly|QIODevice::Text)){
-        //한글사용을 위해 fromLocal8Bit함수 사용
-        targetFile.write(ui->plainTextEditContent->toPlainText().toLocal8Bit());
-        ui->plainTextEditContent->clear();
-    }else{
-        //파일 열기에 실패하면 표시하는 메시지
-        QMessageBox *msgBox = new QMessageBox();
-        msgBox->setWindowTitle(tr("Warning!!"));
-        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
-        msgBox->show();
-        return;
-    }
-       targetFile.close();
-
 }
