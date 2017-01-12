@@ -85,16 +85,30 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButtonSplit">
+          <widget class="QPushButton" name="pushButtonValidate">
            <property name="text">
-            <string>Split</string>
+            <string>Validate</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButtonAppend">
+          <widget class="QPushButton" name="pushButtonSave">
            <property name="text">
-            <string>Append</string>
+            <string>Save</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonMerge">
+           <property name="text">
+            <string>Merge</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonSplit">
+           <property name="text">
+            <string>Split</string>
            </property>
           </widget>
          </item>

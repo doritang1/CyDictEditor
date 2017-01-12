@@ -25,11 +25,18 @@ private slots:
     void on_pushButtonOpen_clicked();
     void on_pushButtonSplit_clicked();
 
+    void on_pushButtonValidate_clicked();
+
+    void on_pushButtonMerge_clicked();
+
+    void on_pushButtonSave_clicked();
+
 private:
     Ui::MainWindow *ui;
     QDir dirSource;
     QStringList *listSources;
     QString *stringHtml;
+    QString *str;
     QStringListModel *modelFiles;
     QStringListModel *modelTitles;
     QStringListModel *modelDefinitions;
@@ -45,7 +52,7 @@ private:
     void readPElement();
     void skipUnknownElement();
 
-    bool verifyHtml();
+    bool validateHtml(QString *);
     void splitHtml(QString);
 };
 

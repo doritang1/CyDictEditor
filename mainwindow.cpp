@@ -24,9 +24,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -40,52 +40,35 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     ui->listViewFiles->setModel(modelFiles);
 }
 
-//2.파일들을 하나 하나 열어 그 내용을 읽어내어 연결한다.
+//2.파일을 하나 열어 그 내용을 읽는다.
 void MainWindow::on_pushButtonOpen_clicked()
 {
     QFile sourceFile;
-    QStringListIterator itorFiles(*listSources); //파일의 리스트 작성
-    stringHtml = new QString();
-    strlstHtmls = new QStringList();
-    while(itorFiles.hasNext()){ //리스트를 순환하면서
-         sourceFile.setFileName(itorFiles.next());
-       if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
-           //한글사용을 위해 fromLocal8Bit함수 사용
-           *stringHtml = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
-           if(verifyHtml()){ //이상 없는지 점검하고
+    str = new QString();
+    sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
+    if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+        //한글사용을 위해 fromLocal8Bit함수 사용
+        *str = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
+        ui->plainTextEditContent->setPlainText(*str); //보여준다.
 
-               strlstHtmls->append(*stringHtml); //StringList에 담는다.
-           }
-       }else{
-           //파일 열기에 실패하면 표시하는 메시지
-           QMessageBox *msgBox = new QMessageBox();
-           msgBox->setWindowTitle(tr("Warning!!"));
-           msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
-           msgBox->show();
-           return;
-       }
-       sourceFile.close();
+    }else{
+        //파일 열기에 실패하면 표시하는 메시지
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setWindowTitle(tr("Warning!!"));
+        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+        msgBox->show();
+        return;
     }
-    QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()), "Cofirm");
-
-    //불러온 파일들을 연결하여 보여줌
-    itorFiles.toFront();
-    int count = 0;
-    QStringListIterator itorHtmls(*strlstHtmls);
-    while(itorHtmls.hasNext()){
-        ++count;
-        ui->plainTextEditContent->appendPlainText(QString("word: %1 of %2").arg(count).arg(strlstHtmls->length()) + "\n" + itorHtmls.next().toUtf8()+"\n");
-    }
-    QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()), "Cofirm");
+       sourceFile.close();    
 }
 
 //3: 에러발생 방지코드
-bool MainWindow::verifyHtml()
+bool MainWindow::validateHtml(QString *strHtml)
 {
     int startPos = 0;
     int offsetPos = 0;
     QStringList tokens;
-    tokens << "head" << "title" << "meta" << "link" << "SPAN" << "br" << "Object" << "param" << "p";
+    tokens << "head" << "title" << "meta" << "link" << "span" << "br" << "Object" << "param" << "p";
 
     for(int i = 0; i<tokens.size();i++){
 
@@ -97,7 +80,7 @@ bool MainWindow::verifyHtml()
             matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<meta")을 지정함.
             while(1){
 
-                offsetPos = matcher.indexIn(*stringHtml, startPos);//startToken (ex: "|<meta")을 찾은 첫번째 위치를 기억한다.
+                offsetPos = matcher.indexIn(*strHtml, startPos);//startToken (ex: "|<meta")을 찾은 첫번째 위치를 기억한다.
                 if(offsetPos < 0){
                     startPos = 0;
                     break; //만약 못찾았으면 루프 탈출
@@ -105,17 +88,19 @@ bool MainWindow::verifyHtml()
                 startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<meta|"를 검색위치로 새로 지정함
 
                 matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "</meta>")을 찾는다.
-                offsetPos = matcher.indexIn(*stringHtml, startPos);
+                offsetPos = matcher.indexIn(*strHtml, startPos);
 
                 if(offsetPos < 0){    //endToken이 찾아지지 않으면
                     matcher.setPattern(startMark);  //첫번째 "<"이 발견되는 위치"|<"를 찾음
-                    offsetPos = matcher.indexIn(*stringHtml, startPos);
+                    offsetPos = matcher.indexIn(*strHtml, startPos);
                     if(offsetPos < 0) return true; //만약 "<"도 발견되지 않으면 함수를 끝냄
-                    *stringHtml = stringHtml->insert(offsetPos-1, endToken); //endToken을 집어 넣는다.
+                    *strHtml = strHtml->insert(offsetPos-1, endToken); //endToken을 집어 넣는다.
 
                     startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
                     matcher.setPattern(startToken); //pattern을 "<"에서 원래의 토큰(ex: "meta")로 다시 바꾼다
                 }
+                startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
+                matcher.setPattern(startToken); //pattern을 "<"에서 원래의 토큰(ex: "meta")로 다시 바꾼다
             }
         }//meta, link
         else if(tokens.at(i) == "title"){
@@ -125,17 +110,17 @@ bool MainWindow::verifyHtml()
             QStringMatcher matcher;
             matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<title")을 지정함.
             while(1){
-                offsetPos = matcher.indexIn(*stringHtml, startPos);//startToken (ex: "|<title")을 찾은 첫번째 위치를 기억한다.
+                offsetPos = matcher.indexIn(*strHtml, startPos);//startToken (ex: "|<title")을 찾은 첫번째 위치를 기억한다.
                 if(offsetPos < 0){
                     startPos = 0;
                     break; //만약 못찾았으면 루프 탈출
                 }
                 startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<title|"를 검색위치로 새로 지정함
                 matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "/title>")을 찾는다.
-                offsetPos = matcher.indexIn(*stringHtml, startPos);
+                offsetPos = matcher.indexIn(*strHtml, startPos);
                 if(offsetPos >= 0){    //endToken이 찾아지면
-                    if(stringHtml->at(offsetPos - 1)== startMark) continue; //endToken(ex: "/title>") 바로 앞이 "<"이면 이상 없으므로 무시
-                    stringHtml->insert(offsetPos, startMark);  //endToken(ex: "/title>" 바로 앞에 "<"를 삽입한다.
+                    if(strHtml->at(offsetPos - 1)== startMark) continue; //endToken(ex: "/title>") 바로 앞이 "<"이면 이상 없으므로 무시
+                    strHtml->insert(offsetPos, startMark);  //endToken(ex: "/title>" 바로 앞에 "<"를 삽입한다.
                     startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
                     matcher.setPattern(startToken); //pattern을 endToken(ex: "/title>"에서 원래의 토큰(ex: "<title")로 다시 바꾼다
                 }
@@ -148,7 +133,7 @@ bool MainWindow::verifyHtml()
             QStringMatcher matcher;
             matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<head")을 지정함.
             while(1){
-                offsetPos = matcher.indexIn(*stringHtml, startPos);//startToken (ex: "|<head")을 찾은 첫번째 위치를 기억한다.
+                offsetPos = matcher.indexIn(*strHtml, startPos);//startToken (ex: "|<head")을 찾은 첫번째 위치를 기억한다.
 
                 if(offsetPos < 0){
                     startPos = 0;
@@ -157,47 +142,72 @@ bool MainWindow::verifyHtml()
                 startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<head|"를 검색위치로 새로 지정함
 
                 matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "</head>")을 찾는다.
-                offsetPos = matcher.indexIn(*stringHtml, startPos);
+                offsetPos = matcher.indexIn(*strHtml, startPos);
 
                 if(offsetPos >= 0){    //endToken이 찾아지면
-                    if(stringHtml->at(offsetPos - 1)== startMark) break; //endToken(ex: "</head>") 바로 앞이 "\n"이면 탈출
-                    stringHtml->insert(offsetPos, startMark);  //endToken(ex: "</head>") 바로 앞에 "\n"를 삽입한다.
+                    if(strHtml->at(offsetPos - 1)== startMark) break; //endToken(ex: "</head>") 바로 앞이 "\n"이면 탈출
+                    strHtml->insert(offsetPos, startMark);  //endToken(ex: "</head>") 바로 앞에 "\n"를 삽입한다.
 
                     startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
                     matcher.setPattern(startToken); //pattern을 endToken (ex: "</head>")에서 원래의 토큰(ex: "<head")로 다시 바꾼다
                 }//if(offsetPos)
             }//while(1)
         }//head
-        else if(tokens.at(i) == "SPAN"){
-            *stringHtml = stringHtml->replace("<SPAN", "<span"); //대문자를 소문자로
-            *stringHtml = stringHtml->replace("</SPAN", "</span");
+        else if(tokens.at(i) == "span"){
+            *strHtml = strHtml->replace("<SPAN", "<span"); //대문자를 소문자로
+            *strHtml = strHtml->replace("</SPAN", "</span");
 
             //span태그의 class 애트리뷰트에서 따옴표가 없음
             int s = 0;
             int e = 0;
-            s = stringHtml->indexOf(QRegExp("class=[^\"].*[^\"]>"));
+            s = strHtml->indexOf(QRegExp("class=[^\"].*[^\"]>"));
             if(s>0){
-                e = stringHtml->indexOf(">",s);
-                *stringHtml = stringHtml->insert(e,"\"");
-                *stringHtml = stringHtml->insert(s+6,"\"");
+                e = strHtml->indexOf(">",s);
+                *strHtml = strHtml->insert(e,"\"");
+                *strHtml = strHtml->insert(s+6,"\"");
             }
-        }//SPAN이 대문자
+
+        }//SPAN이 대문자 or 애트리뷰트에 따옴표 없음
         else if(tokens.at(i) == "br"){
-            *stringHtml = stringHtml->remove("<br>"); //<br> 제거
+            *strHtml = strHtml->remove("<br>"); //<br> 제거
         }//br
         else if(tokens.at(i) == "Object" || tokens.at(i) == "param"){
-            *stringHtml = stringHtml->remove(QRegExp("<Object[^>]*>"));
-            *stringHtml = stringHtml->remove(QRegExp("<param[^>]*>"));
+            *strHtml = strHtml->remove(QRegExp("<Object[^>]*>"));
+            *strHtml = strHtml->remove(QRegExp("<param[^>]*>"));
         }//Object, param
         else if(tokens.at(i) == "p" || tokens.at(i) == "b"){
-                                   qDebug()<<*stringHtml;
-            *stringHtml = stringHtml->replace("<P>", "<p>"); //P가 대문자
-            *stringHtml = stringHtml->replace("</P>", "</p>");
-            if(stringHtml->indexOf("<p>&nbsp;</p>")<0){ //"<p>&nbsp;</p>"를 찾을 수 없으면
-                *stringHtml = stringHtml->replace("<p>&nbsp;", "<p>&nbsp;</p>");
+            //qDebug()<<*strHtml;
+            *strHtml = strHtml->replace("<P>", "<p>"); //P가 대문자
+            *strHtml = strHtml->replace("</P>", "</p>");
+            if(strHtml->contains("<p>&nbsp;")){ //"<p>&nbsp;"가 있으면
+
+                int s = 0;
+                int e = 0;
+                QString strBefore;
+                QString strAfter;
+                while(1){
+                    s = strHtml->indexOf("<p>&nbsp;", s);
+                    if(s>0){  //<p>&nbsp;를 찾고
+                        e = strHtml->indexOf("\n",s);
+                        if(e>0){ //다시 \n를 찾아 있으면
+                            if(strHtml->mid(e-4, 4)=="</p>"){ //그 앞에 </p>가 있는지 검사
+                                break;
+                            }else{ //앞에 </p>가 없으면
+                                strBefore = strHtml->mid(s+3, e-(s+3));
+                                strAfter = strBefore;
+                                strAfter = strAfter.append("</p>");//뒤에 나오는 "\n"앞에 </p>를 삽입한다.
+                                *strHtml = strHtml->replace(strBefore, strAfter);
+                                s += 3; //앞의 <p>뒤에서 다시 시작
+                                e = 0;
+                            }
+                        }
+                    }else{ //<p>&nbsp;가 없으면
+                        break;
+                    }
+                }
             }
-            *stringHtml = stringHtml->replace("<B>", "<b>"); //B가 대문자
-            *stringHtml = stringHtml->replace("</B>", "</b>");
+            *strHtml = strHtml->replace("<B>", "<b>"); //B가 대문자
+            *strHtml = strHtml->replace("</B>", "</b>");
 
             //<p>와 </p>사이에 "\n"(줄바꿈)이 있다. </p>가 없다.
             int s = 0;
@@ -205,31 +215,43 @@ bool MainWindow::verifyHtml()
             QString strBefore;
             QString strAfter;
             while(1){
-                s = stringHtml->indexOf("<p>",s);
-                if(s>0){
-                    e = stringHtml->indexOf("</p>",s);
-                    if(e>0){
-                        strBefore = stringHtml->mid(s+3,e-(s+3));
+                s = strHtml->indexOf("<p>",s);
+                if(s>0){ //<p>를 찾았으면
+                    e = strHtml->indexOf("</p>",s);
+                    if(e>0){ //다시 </p>를 찾고
+                        strBefore = strHtml->mid(s+3,e-(s+3)); //p태그 사이에 있는 문장만 뽑아낸다.
                         strAfter = strBefore;
-                        if(strBefore.contains("\n")){
-                            strAfter = strAfter.replace("\n", " ").toUtf8();
-
-
+                        if(strBefore.contains("\n")){ // "\n"이 들어있으면
+                            strAfter = strAfter.replace("\n", " ").toUtf8(); // "\n"을 공백(" ")으로 대체한다.
                         }
-                    }else{  //</p>가 없다.
-                        strBefore = stringHtml->mid(s+3,e-(s+3));
-                        strAfter = strBefore;
-                        strAfter = strAfter.append("</p>");
-
+                        *strHtml = strHtml->replace(strBefore, strAfter);
+                        s += 3; //앞의 <p>뒤에서 다시 시작.
+                        e = 0;
+                        //continue;
+                    }else{  //<p>는 있는데 </p>가 없다.
+                        e = strHtml->indexOf("<p>", s+3); //혹시 뒤에 다른 <p>가 나오는지 봐서
+                        if(e>0){
+                            strBefore = strHtml->mid(s+3,e-(s+3)); //<p>와 <p>태그 사이에 있는 문장을 뽑아낸다.
+                            strAfter = strBefore;
+                            strAfter = strAfter.append("</p>"); //뒤에 나오는 <p>앞에 </p>를 삽입한다.
+                            *strHtml = strHtml->replace(strBefore, strAfter);
+                            s += 3; //앞의 <p>뒤에서 다시 시작
+                            e = 0;
+                        }else{ //만약 다른 <p>도 찾을 수 없다면
+                            e = strHtml->indexOf("\n", s+3); // 줄의 끝("\n")을 찾아
+                            strBefore = strHtml->mid(s+3, e-(s+3));
+                            strAfter = strBefore;
+                            strAfter = strAfter.append("</p>");//뒤에 나오는 "\n"앞에 </p>를 삽입한다.
+                            *strHtml = strHtml->replace(strBefore, strAfter);
+                            s += 3; //앞의 <p>뒤에서 다시 시작
+                            e = 0;
+                        }
+                        //continue;
                     }
-                }else{
+                }else{ //더이상 <p>를 못찾으면 탈출
                     break;
                 }
-                s = e+4;
-                e = 0;
             }
-
-            *stringHtml = stringHtml->replace(strBefore, strAfter);
 
         }//p: <&nbsp || <P> || <B>
         else {
@@ -239,7 +261,7 @@ bool MainWindow::verifyHtml()
             QStringMatcher matcher;
             matcher.setPattern(startToken);//검색할 문자열(startToken)(ex: "<head")을 지정함.
             while(1){
-                offsetPos = matcher.indexIn(*stringHtml, startPos);//startToken (ex: "|<head")을 찾은 첫번째 위치를 기억한다.
+                offsetPos = matcher.indexIn(*strHtml, startPos);//startToken (ex: "|<head")을 찾은 첫번째 위치를 기억한다.
 
                 if(offsetPos < 0){
                     startPos = 0;
@@ -248,11 +270,11 @@ bool MainWindow::verifyHtml()
                 startPos = offsetPos + startToken.length();//startToken의 끝위치(ex: "<head|"를 검색위치로 새로 지정함
 
                 matcher.setPattern(endToken); //startToken 다음에 오는 endToken (ex: "</head>")을 찾는다.
-                offsetPos = matcher.indexIn(*stringHtml, startPos);
+                offsetPos = matcher.indexIn(*strHtml, startPos);
 
                 if(offsetPos >= 0){    //endToken이 찾아지면
-                    if(stringHtml->at(offsetPos - 1)== startMark) break; //endToken(ex: "</head>") 바로 앞이 "\n"이면 탈출
-                    stringHtml->insert(offsetPos, startMark);  //endToken(ex: "</head>") 바로 앞에 "\n"를 삽입한다.
+                    if(strHtml->at(offsetPos - 1)== startMark) break; //endToken(ex: "</head>") 바로 앞이 "\n"이면 탈출
+                    strHtml->insert(offsetPos, startMark);  //endToken(ex: "</head>") 바로 앞에 "\n"를 삽입한다.
 
                     startPos = offsetPos + endToken.length(); //startPos를 다음 위치로 옮겨놓고
                     matcher.setPattern(startToken); //pattern을 endToken (ex: "</head>")에서 원래의 토큰(ex: "<head")로 다시 바꾼다
@@ -266,6 +288,9 @@ bool MainWindow::verifyHtml()
 //4-1: title과 body문을 추출한다.
 void MainWindow::on_pushButtonSplit_clicked()
 {
+    ui->plainTextEditContent->clear();
+    ui->plainTextEditDefinition->clear();
+
     strlstTitles = new QStringList();
     strlstDefinitions = new QStringList();
 
@@ -284,6 +309,10 @@ void MainWindow::on_pushButtonSplit_clicked()
     modelDefinitions = new QStringListModel(this);
     modelDefinitions->setStringList(*strlstDefinitions);
     ui->listViewDefinition->setModel(modelDefinitions);
+
+    QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()), "Cofirm");
+    ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()));
+    ui->plainTextEditDefinition->setPlainText(QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()));
 }
 
 void MainWindow::splitHtml(QString text)
@@ -497,4 +526,65 @@ void MainWindow::skipUnknownElement()
             reader.readNext();
         }
     }
+}
+
+void MainWindow::on_pushButtonValidate_clicked()
+{
+    if(validateHtml(str)){ //이상 없는지 점검하고
+        ui->plainTextEditContent->setPlainText(*str);
+    }
+}
+
+void MainWindow::on_pushButtonMerge_clicked()
+{
+    ui->plainTextEditContent->clear();
+    ui->plainTextEditDefinition->clear();
+
+    QFile sourceFile;
+    QStringListIterator itorFiles(*listSources); //파일의 리스트 작성
+    stringHtml = new QString();
+    strlstHtmls = new QStringList();
+    while(itorFiles.hasNext()){ //리스트를 순환하면서
+         sourceFile.setFileName(itorFiles.next());
+       if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
+           //한글사용을 위해 fromLocal8Bit함수 사용
+           *stringHtml = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
+           if(validateHtml(stringHtml)){ //이상 없는지 점검하고
+
+               strlstHtmls->append(*stringHtml); //StringList에 담는다.
+           }
+       }else{
+           //파일 열기에 실패하면 표시하는 메시지
+           QMessageBox *msgBox = new QMessageBox();
+           msgBox->setWindowTitle(tr("Warning!!"));
+           msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+           msgBox->show();
+           return;
+       }
+       sourceFile.close();
+    }
+    QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()), "Cofirm");
+    ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()));
+    ui->plainTextEditDefinition->setPlainText(QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()));
+}
+
+void MainWindow::on_pushButtonSave_clicked()
+{
+    ui->plainTextEditContent->clear();
+
+    QFile targetFile;
+    targetFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
+    if(targetFile.open(QIODevice::WriteOnly|QIODevice::Text)){
+        //한글사용을 위해 fromLocal8Bit함수 사용
+        targetFile.write(ui->plainTextEditContent->toPlainText().toLocal8Bit());
+    }else{
+        //파일 열기에 실패하면 표시하는 메시지
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setWindowTitle(tr("Warning!!"));
+        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+        msgBox->show();
+        return;
+    }
+       targetFile.close();
+
 }
