@@ -24,9 +24,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -61,6 +61,7 @@ void MainWindow::on_pushButtonOpen_clicked()
         msgBox->show();
         return;
     }
+    sourceFile.flush();
     sourceFile.close();
 }
 
@@ -83,6 +84,7 @@ void MainWindow::on_listViewFiles_clicked(const QModelIndex &index)
         msgBox->show();
         return;
     }
+    sourceFile.flush();
     sourceFile.close();
 }
 
@@ -105,6 +107,7 @@ void MainWindow::on_listViewFiles_activated(const QModelIndex &index)
         msgBox->show();
         return;
     }
+    sourceFile.flush();
     sourceFile.close();
 }
 
@@ -356,6 +359,7 @@ void MainWindow::on_pushButtonSave_clicked()
         msgBox->show();
         return;
     }
+       targetFile.flush();
        targetFile.close();
 }
 
@@ -386,6 +390,7 @@ void MainWindow::on_pushButtonMerge_clicked()
            msgBox->show();
            return;
        }
+       sourceFile.flush();
        sourceFile.close();
     }
     QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully merged.").arg(strlstHtmls->length()), "Cofirm");
@@ -647,3 +652,77 @@ void MainWindow::on_listViewWord_clicked(const QModelIndex &index)
         ui->plainTextEditDefinition->appendHtml(mapDefinitions.value(id.next()));
     }
 }
+
+void MainWindow::on_pushButtonCreateDict_clicked()
+{
+    //작업할 Directory를 선택한다.
+    //원래
+    //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
+    //회사에서:
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //집에서:
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+
+    QString dictionaryName;
+    QFile targetTitle(this);
+    QFile targetContent(this);
+    QFile ifoFile(this);
+
+    dictionaryName = ui->lineEditTargetFile->text();
+    if(dictionaryName != ""){
+        targetTitle.setFileName(dirSource.absoluteFilePath(dictionaryName + ".idx"));
+        targetContent.setFileName(dirSource.absoluteFilePath(dictionaryName + ".dict"));
+        ifoFile.setFileName(dirSource.absoluteFilePath(dictionaryName + ".ifo"));
+    }else{
+        QMessageBox::information(this,"Failed!!","사전의 이름을 써 주십시요.","OK");
+    }
+
+    QDataStream outToTitle; //title파일은 숫자를 포함하는 이진파일이므로 QDataStream사용
+    outToTitle.setDevice(&targetTitle);
+    //QDataStream의 경우 딸려오는 정보들이 버전별로 다른가 보다. 버전을 맞춰서 읽고 써야 한다.
+    outToTitle.setVersion(QDataStream::Qt_5_5);
+
+    QTextStream outToContent;
+    outToContent.setDevice(&targetContent);
+    outToContent.setCodec("UTF-8");//Qt는 내부적으로 유니코드에 utf-16을 쓰므로 utf-8은 명시적으로 코덱을 써줘야 한다.
+
+
+
+if(outToContent.device()->open(QFile::WriteOnly|QFile::Text)){
+    if(outToTitle.device()->open(QFile::WriteOnly)){
+        outToContent<<"dkflsdkfds";
+//        QMapIterator<int, QString> defsItor(mapDefinitions);
+//        //int posOld = 0;
+//        QString bufContent;
+//        while(defsItor.hasNext()){
+//            defsItor.next();
+//            qDebug()<<defsItor.value();
+
+//            //본문파일의 스트림(outToContent)에 본문을 써 넣는다.
+//            outToContent << defsItor.value();
+//        }
+
+    }
+}
+
+
+
+
+////            //본문의 일련번호에 해당하는 표제어들을 찾아 순환하면서 스트림(outToTitle)에 써 넣는다.
+////            QListIterator<QString> wordsItor(mltmapTitles.keys(defsItor.next().key()));
+////            while(wordsItor.hasNext()){
+////                //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터, content의 글자수를 써 넣는다.
+////                outToTitle << wordsItor.next() << posOld << bufContent.length();
+////            }
+
+            //파일포인터를 content뒤쪽으로 옮긴다. 단, 글자수가 아닌 바이트수로 계산해야 한다.
+//            posOld += bufContent.toUtf8().size();
+        }
+//        outToContent.flush();
+//        targetTitle.flush();
+//        targetTitle.close();
+//        targetContent.flush();
+//        targetContent.close();
+
+
+

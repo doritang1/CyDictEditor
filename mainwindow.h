@@ -35,6 +35,8 @@ private slots:
 
     void on_listViewFiles_activated(const QModelIndex &index);
 
+    void on_pushButtonCreateDict_clicked();
+
 private:
     Ui::MainWindow *ui;
     QDir dirSource;
