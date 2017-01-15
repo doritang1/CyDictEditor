@@ -4,7 +4,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
-
+//#include <stdio.h>
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -24,9 +24,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -42,53 +42,7 @@ void MainWindow::on_toolButtonFileSelect_clicked()
 }
 
 //2.파일을 하나 열어 그 내용을 읽는다.
-void MainWindow::on_pushButtonOpen_clicked()
-{
-    QFile sourceFile;
-    str = new QString();
-    sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
-    //sourceFile.setFileName(index.data(Qt::DisplayRole).toString());
-    if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
-        //한글사용을 위해 fromLocal8Bit함수 사용
-        *str = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
-        ui->plainTextEditContent->setPlainText(*str); //보여준다.
-
-    }else{
-        //파일 열기에 실패하면 표시하는 메시지
-        QMessageBox *msgBox = new QMessageBox();
-        msgBox->setWindowTitle(tr("Warning!!"));
-        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
-        msgBox->show();
-        return;
-    }
-    sourceFile.flush();
-    sourceFile.close();
-}
-
 void MainWindow::on_listViewFiles_clicked(const QModelIndex &index)
-{
-    QFile sourceFile;
-    str = new QString();
-    //sourceFile.setFileName(ui->listViewFiles->currentIndex().data(Qt::DisplayRole).toString());
-    sourceFile.setFileName(index.data(Qt::DisplayRole).toString());
-    if(sourceFile.open(QIODevice::ReadOnly|QIODevice::Text)){
-        //한글사용을 위해 fromLocal8Bit함수 사용
-        *str = QString::fromLocal8Bit(sourceFile.readAll()); //파일을 읽어
-        ui->plainTextEditContent->setPlainText(*str); //보여준다.
-
-    }else{
-        //파일 열기에 실패하면 표시하는 메시지
-        QMessageBox *msgBox = new QMessageBox();
-        msgBox->setWindowTitle(tr("Warning!!"));
-        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
-        msgBox->show();
-        return;
-    }
-    sourceFile.flush();
-    sourceFile.close();
-}
-
-void MainWindow::on_listViewFiles_activated(const QModelIndex &index)
 {
     QFile sourceFile;
     str = new QString();
@@ -403,7 +357,7 @@ void MainWindow::on_pushButtonSplit_clicked()
 {
     ui->plainTextEditContent->clear();
     ui->plainTextEditDefinition->clear();
-    ui->listViewWord->clearSelection();
+    ui->listViewWordFromMap->clearSelection();
     //html들이 담겨있는 리스트 strlstHtmls를 순환하면서 QXmlReader로 분석
     QStringListIterator itorHtmls(*strlstHtmls);
     counterWord = 0;
@@ -415,7 +369,8 @@ void MainWindow::on_pushButtonSplit_clicked()
     //모델을 생성하여 listView와 연결한다.
     modelTitles = new QStringListModel(this);
     modelTitles->setStringList(mltmapTitles.keys());
-    ui->listViewWord->setModel(modelTitles);
+    ui->listViewWordFromMap->setModel(modelTitles);
+    ui->listViewWordFromMap->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     QMessageBox::information(this, "Succeeded!!!", QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()), "Cofirm");
     ui->plainTextEditContent->setPlainText(QString("Total %1 files are successfully processed.").arg(strlstHtmls->length()));
@@ -612,7 +567,6 @@ void MainWindow::readPElement()
     }//while(itor.hasNext())
 
     //전체 body문을 출력한다.
-    //strlstDefinitions->append(pStr.trimmed());
     mapDefinitions.insert(counterWord, pStr.trimmed());
 
 // 태그를 무시하고 내용만 읽어내는 코드
@@ -640,41 +594,47 @@ void MainWindow::skipUnknownElement()
     }
 }
 
-void MainWindow::on_listViewWord_clicked(const QModelIndex &index)
+void MainWindow::on_listViewWordFromMap_clicked(const QModelIndex &index)
 {
     QString word = index.data(Qt::DisplayRole).toString();
     ui->lineEditWord->clear();
     ui->lineEditWord->insert(word);
+    ui->plainTextEditDefinition->clear();
     QList<int> words = mltmapTitles.values(word);
     QListIterator<int> id(words);
     while(id.hasNext()){
-        ui->plainTextEditDefinition->clear();
         ui->plainTextEditDefinition->appendHtml(mapDefinitions.value(id.next()));
     }
 }
 
 void MainWindow::on_pushButtonCreateDict_clicked()
 {
+    strFileName = ui->lineEditTargetFile->text();
+    createDict(strFileName);
+    loadDict(strFileName);
+}
+
+void MainWindow::createDict(QString &dictionaryName)
+{
     //작업할 Directory를 선택한다.
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
 
-    QString dictionaryName;
-    QFile targetTitle(this);
-    QFile targetContent(this);
-    QFile ifoFile(this);
+    QFile targetTitle;
+    QFile targetDefinition;
+    QFile targetIfo;
 
-    dictionaryName = ui->lineEditTargetFile->text();
     if(dictionaryName != ""){
         targetTitle.setFileName(dirSource.absoluteFilePath(dictionaryName + ".idx"));
-        targetContent.setFileName(dirSource.absoluteFilePath(dictionaryName + ".dict"));
-        ifoFile.setFileName(dirSource.absoluteFilePath(dictionaryName + ".ifo"));
+        targetDefinition.setFileName(dirSource.absoluteFilePath(dictionaryName + ".dict"));
+        targetIfo.setFileName(dirSource.absoluteFilePath(dictionaryName + ".ifo"));
     }else{
         QMessageBox::information(this,"Failed!!","사전의 이름을 써 주십시요.","OK");
+        return;
     }
 
     QDataStream outToTitle; //title파일은 숫자를 포함하는 이진파일이므로 QDataStream사용
@@ -682,47 +642,143 @@ void MainWindow::on_pushButtonCreateDict_clicked()
     //QDataStream의 경우 딸려오는 정보들이 버전별로 다른가 보다. 버전을 맞춰서 읽고 써야 한다.
     outToTitle.setVersion(QDataStream::Qt_5_5);
 
-    QTextStream outToContent;
-    outToContent.setDevice(&targetContent);
-    outToContent.setCodec("UTF-8");//Qt는 내부적으로 유니코드에 utf-16을 쓰므로 utf-8은 명시적으로 코덱을 써줘야 한다.
+    QTextStream outToDefinition;
+    outToDefinition.setDevice(&targetDefinition);
+    //Qt는 내부적으로 유니코드에 utf-16을 쓰므로 utf-8은 명시적으로 코덱을 써줘야 한다.
+    outToDefinition.setCodec("UTF-8");
 
+    //파일을 다룰 때는 qint64를 사용함(크기가 클 수 있으므로...)
+    qint64 pos =0;
+    if(outToDefinition.device()->open(QFile::WriteOnly|QFile::Text)){
+        if(outToTitle.device()->open(QFile::WriteOnly)){
+            QMapIterator<int, QString> defsItor(mapDefinitions);
+            while(defsItor.hasNext()){
+                defsItor.next();
+                //본문파일의 스트림(outToContent)에 본문을 써 넣는다.
+                outToDefinition << defsItor.value();
+                //본문의 일련번호에 해당하는 표제어들을 찾아 순환하면서 스트림(outToTitle)에 써 넣는다.
+                QListIterator<QString> wordsItor(mltmapTitles.keys(defsItor.key()));
+                while(wordsItor.hasNext()){
+                    QString txt = wordsItor.next();
+                    //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터, content의 글자수를 써 넣는다.
+                    outToTitle << txt << pos << defsItor.value().length();
+                }
 
+                //파일포인터를 content뒤쪽으로 옮긴다. 단, 글자수가 아닌 바이트수로 계산해야 한다.
+                pos += defsItor.value().toUtf8().size();
+                //posOld += defsItor.value().length();
+            }
+        }else{
+            //파일 열기에 실패하면 표시하는 메시지
+            QMessageBox *msgBox = new QMessageBox();
+            msgBox->setWindowTitle(tr("Warning!!"));
+            msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+            msgBox->show();
+            return;
+        }
+    }else{
+        //파일 열기에 실패하면 표시하는 메시지
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setWindowTitle(tr("Warning!!"));
+        msgBox->setText(tr("The file can't be opened. Please check if it is in the right folder"));
+        msgBox->show();
+        return;
+    }
 
-if(outToContent.device()->open(QFile::WriteOnly|QFile::Text)){
-    if(outToTitle.device()->open(QFile::WriteOnly)){
-        outToContent<<"dkflsdkfds";
-//        QMapIterator<int, QString> defsItor(mapDefinitions);
-//        //int posOld = 0;
-//        QString bufContent;
-//        while(defsItor.hasNext()){
-//            defsItor.next();
-//            qDebug()<<defsItor.value();
-
-//            //본문파일의 스트림(outToContent)에 본문을 써 넣는다.
-//            outToContent << defsItor.value();
-//        }
+    //Ifo파일 작성
+    QTextStream outToIfo;
+    outToIfo.setDevice(&targetIfo);
+    outToInfo.setCodec("UTF-8");
+    if(outToIfo.device()->open(QFile::WriteOnly|QFile::Text)){
+        outToIfo << QString("%1's dict ifo file").arg("StarDict") << "\n"
+                 << QString("version=%1").arg("2.4.2") << "\n"
+                 << QString("wordcount=%1").arg(mltmapTitles.keys().count()) << "\n"
+                 << QString("idxfilesize=%1").arg(targetTitle.size()/2) << "\n"
+                 << QString("bookname=%1").arg(dictionaryName) << "\n"
+                 << QString("sametypesequence=%1").arg("h");
 
     }
+//    //Ifo파일 작성
+//    FILE *ifoFile = fopen(dirSource.absoluteFilePath(dictionaryName + ".ifo").toLatin1(), "w+");
+//fprintf(ifoFile, "StarDict's dict ifo file\nversion=2.4.2\nwordcount=%d\nidxfilesize=%ld\nbookname=SKKU\nsametypesequence=h\n",mltmapTitles.keys().count(),(long)targetTitle.size());
+
+
+    targetTitle.flush();
+    targetTitle.close();
+    targetDefinition.flush();
+    targetDefinition.close();
+    targetIfo.flush();
+    targetIfo.close();
+
+    return;
 }
 
+void MainWindow::loadDict(QString &strFilePath)
+{
+    QFile sourceTitle;
+    sourceTitle.setFileName(dirSource.absoluteFilePath(strFilePath + ".idx"));
+    QDataStream inFromTitle;
+    inFromTitle.setDevice(&sourceTitle);
+    //inFromTitle.setCodec("UTF-8");
+    inFromTitle.setVersion(QDataStream::Qt_5_5);
+    inFromTitle.device()->open(QFile::ReadOnly);
 
+    QString Title;
+    _position offset;//title파일에 기록된 content의 포인터와 길이를 받아오기 위한 구조체
+    while(!inFromTitle.atEnd())
+    {
+        inFromTitle >> Title >> offset.contentBegin >> offset.contentLength;
+        mltmapWords.insert(Title,offset); //string과 구조체를 저장하는 자료구조(map)
+    }
 
+    sourceTitle.close();
 
-////            //본문의 일련번호에 해당하는 표제어들을 찾아 순환하면서 스트림(outToTitle)에 써 넣는다.
-////            QListIterator<QString> wordsItor(mltmapTitles.keys(defsItor.next().key()));
-////            while(wordsItor.hasNext()){
-////                //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터, content의 글자수를 써 넣는다.
-////                outToTitle << wordsItor.next() << posOld << bufContent.length();
-////            }
+    //모델을 생성하여 listView와 연결한다.
+    modelWords = new QStringListModel(this);
+    modelWords->setStringList((QStringList)mltmapWords.keys());
+    ui->listViewWordFromFile->setModel(modelWords);
+    ui->listViewWordFromFile->setEditTriggers(QAbstractItemView::NoEditTriggers);
+}
 
-            //파일포인터를 content뒤쪽으로 옮긴다. 단, 글자수가 아닌 바이트수로 계산해야 한다.
-//            posOld += bufContent.toUtf8().size();
-        }
-//        outToContent.flush();
-//        targetTitle.flush();
-//        targetTitle.close();
-//        targetContent.flush();
-//        targetContent.close();
+void MainWindow::on_listViewWordFromFile_clicked(const QModelIndex &index)
+{
+    QFile sourceDefinition;
+    sourceDefinition.setFileName(dirSource.absoluteFilePath(strFileName + ".dict"));
 
+    QTextStream inFromDefinition;
+    inFromDefinition.setDevice(&sourceDefinition);
+    inFromDefinition.setCodec("UTF-8"); //Qt는 내부적으로 유니코드에 utf-16을 사용하므로 utf-8은 이렇게 지정해줘야 한다.
 
+    //파일오픈에 실패했을 경우 출력 메시지
+    if(!inFromDefinition.device()->open(QFile::ReadOnly|QFile::Text))
+    {
+        QMessageBox *msgBox = new QMessageBox();
+        msgBox->setText("No Content file in the directory");
+        msgBox->show();
+    }
 
+    //선택된 표제어를 lineEdit에 표시
+    QString word = index.data(Qt::DisplayRole).toString();
+    ui->lineEditWord->clear();
+    ui->lineEditWord->insert(word);
+
+    //key(현재 선택된 표제어)에 해당하는 value(시작위치,길이)를 모두 List로 반환받아서
+    //List를 순환하며 화면에 표시
+    ui->plainTextEditDefinition->clear();
+    QList<_position> offsets;
+    offsets = mltmapWords.values(word);
+    //같은 철자의 단어가 있을 수 있으므로 while문을 둔다.
+    QListIterator<_position> posItor(offsets);
+    while(posItor.hasNext()){
+        _position offset = posItor.next();
+        QString strDefinition;
+        //시작위치(읽을 위치)로 파일 포인터를 이동
+        inFromDefinition.seek(offset.contentBegin);
+        //현재의 파일 포인터에서 지정된 길이만큼 읽음
+        strDefinition = inFromDefinition.read(qint64(offset.contentLength));
+        //화면에 표시
+        ui->plainTextEditDefinition->appendHtml(strDefinition);
+    }
+    sourceDefinition.flush();
+    sourceDefinition.close();
+}

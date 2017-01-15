@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1118</width>
-    <height>624</height>
+    <width>1139</width>
+    <height>630</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -78,13 +78,6 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
-          <widget class="QPushButton" name="pushButtonOpen">
-           <property name="text">
-            <string>Open</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QPushButton" name="pushButtonValidate">
            <property name="text">
             <string>Validate</string>
@@ -139,7 +132,7 @@
      <rect>
       <x>850</x>
       <y>20</y>
-      <width>260</width>
+      <width>277</width>
       <height>551</height>
      </rect>
     </property>
@@ -147,7 +140,17 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QListView" name="listViewWord"/>
+        <widget class="QListView" name="listViewWordFromMap"/>
+       </item>
+       <item alignment="Qt::AlignHCenter">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;&amp;lt;▲From Memory▲&amp;gt;&amp;lt;▼From File▼&amp;gt;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListView" name="listViewWordFromFile"/>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -183,7 +186,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1118</width>
+     <width>1139</width>
      <height>21</height>
     </rect>
    </property>
