@@ -4,7 +4,10 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
-//#include <stdio.h>
+
+#include <stdio.h>
+
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -648,7 +651,7 @@ void MainWindow::createDict(QString &dictionaryName)
     outToDefinition.setCodec("UTF-8");
 
     //파일을 다룰 때는 qint64를 사용함(크기가 클 수 있으므로...)
-    qint64 pos =0;
+    uint32_t pos =0;
     if(outToDefinition.device()->open(QFile::WriteOnly|QFile::Text)){
         if(outToTitle.device()->open(QFile::WriteOnly)){
             QMapIterator<int, QString> defsItor(mapDefinitions);
@@ -660,7 +663,8 @@ void MainWindow::createDict(QString &dictionaryName)
                 QListIterator<QString> wordsItor(mltmapTitles.keys(defsItor.key()));
                 while(wordsItor.hasNext()){
                     QString txt = wordsItor.next();
-                    //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터, content의 글자수를 써 넣는다.
+                    //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터,
+                    //content의 글자수를 써 넣는다.
                     outToTitle << txt << pos << defsItor.value().length();
                 }
 
@@ -688,7 +692,7 @@ void MainWindow::createDict(QString &dictionaryName)
     //Ifo파일 작성
     QTextStream outToIfo;
     outToIfo.setDevice(&targetIfo);
-    outToInfo.setCodec("UTF-8");
+    outToIfo.setCodec("UTF-8");
     if(outToIfo.device()->open(QFile::WriteOnly|QFile::Text)){
         outToIfo << QString("%1's dict ifo file").arg("StarDict") << "\n"
                  << QString("version=%1").arg("2.4.2") << "\n"
@@ -775,7 +779,7 @@ void MainWindow::on_listViewWordFromFile_clicked(const QModelIndex &index)
         //시작위치(읽을 위치)로 파일 포인터를 이동
         inFromDefinition.seek(offset.contentBegin);
         //현재의 파일 포인터에서 지정된 길이만큼 읽음
-        strDefinition = inFromDefinition.read(qint64(offset.contentLength));
+        strDefinition = inFromDefinition.read(uint32_t(offset.contentLength));
         //화면에 표시
         ui->plainTextEditDefinition->appendHtml(strDefinition);
     }

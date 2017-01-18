@@ -9,6 +9,8 @@
 #include <QMap>
 #include <htmlnamedentityresolver.h>
 
+#include <stdint.h>
+
 namespace Ui {
 class MainWindow;
 }
@@ -16,7 +18,7 @@ class MainWindow;
 //파일포인터를 저장하기 위한 구조체
 struct _position
 {
-    qint64 contentBegin;
+    uint32_t contentBegin;
     int contentLength;
 };
 
