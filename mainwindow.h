@@ -19,7 +19,7 @@ class MainWindow;
 struct _position
 {
     uint32_t contentBegin;
-    int contentLength;
+    uint32_t contentLength;
 };
 
 class MainWindow : public QMainWindow
@@ -41,6 +41,8 @@ private slots:
     void on_listViewWordFromMap_clicked(const QModelIndex &index);
     void on_pushButtonCreateDict_clicked();
     void on_listViewWordFromFile_clicked(const QModelIndex &index);
+
+    void on_pushButton_clicked();
 
 private:
     Ui::MainWindow *ui;
