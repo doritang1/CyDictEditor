@@ -1,3 +1,4 @@
+#include <winsock2.h>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDialog>
@@ -7,6 +8,7 @@
 
 #include <stdio.h> //FILE
 #include <winsock.h> //htonl, ntohl함수
+
 #include <QtEndian>
 
 #include <sys/types.h>
@@ -658,7 +660,7 @@ void MainWindow::createDict(QString &dictionaryName)
     //uint32_t를 사용함(크기가 클 수 있으므로...)
     uint32_t pos = 0;
     uint32_t tmp = 0;
-    if(outToDefinition.device()->open(QFile::WriteOnly|QFile::Text)){
+    if(targetDefinition.open(QFile::WriteOnly|QFile::Text)){
         if(outToTitle.device()->open(QFile::WriteOnly)){
             QMapIterator<int, QString> defsItor(mapDefinitions);
             while(defsItor.hasNext()){
@@ -672,13 +674,10 @@ void MainWindow::createDict(QString &dictionaryName)
                     QString txt = wordsItor.next();
                     //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터,
                     //content의 글자수를 써 넣는다.
-
                     outToTitle << txt.toUtf8();
                     tmp = qToBigEndian(pos);
-                    qDebug()<<tmp;
                     //tmp = pos;
                     outToTitle << tmp;
-                    qDebug()<<tmp;
                     tmp = qToBigEndian((uint32_t)defsItor.value().size());
                     //tmp = defsItor.value().size();
                     outToTitle << tmp;
@@ -686,9 +685,6 @@ void MainWindow::createDict(QString &dictionaryName)
 
                 //파일포인터를 content뒤쪽으로 옮긴다. 단, 글자수가 아닌 바이트수로 계산해야 한다.
                 pos = targetDefinition.pos();
-                qDebug()<<"pos: "<< pos;
-                //qDebug()<<"outToDefinition.pos(): " << outToDefinition.device()->pos();
-                qDebug()<<"defsItor.value().length(): "<< defsItor.value().size();
             }
         }else{
             //파일 열기에 실패하면 표시하는 메시지
@@ -775,7 +771,8 @@ void MainWindow::loadDict(QString &strFilePath)
 void MainWindow::on_listViewWordFromFile_clicked(const QModelIndex &index)
 {
     QFile sourceDefinition;
-    sourceDefinition.setFileName(dirSource.absoluteFilePath(strFileName + ".dict"));
+    //sourceDefinition.setFileName(dirSource.absoluteFilePath(strFileName + ".dict"));
+        sourceDefinition.setFileName(dirSource.absoluteFilePath("SKKUD.dict"));
 
     QTextStream inFromDefinition;
     inFromDefinition.setDevice(&sourceDefinition);
@@ -828,48 +825,57 @@ void MainWindow::on_pushButton_clicked()
     FILE *targetTitle;
     FILE *targetDefinition;
     FILE *targetIfo;
-
+    QString dictionaryName = "SKKUD";
     int definition_len;
 
-
-    targetTitle = fopen("D:/QtProjects/content/dictionary6/merge/SKKUC.idx", "wb");
-    targetDefinition = fopen("D:/QtProjects/content/dictionary6/merge/SKKUC.dict", "wb");
-    targetIfo = fopen("QtProjects/content/dictionary6/merge/SKKUC.ifo", "wb");
+    targetTitle = fopen(dirSource.absoluteFilePath(dictionaryName + ".idx").toStdString().c_str(), "wb");
+    targetDefinition = fopen(dirSource.absoluteFilePath(dictionaryName + ".dict").toStdString().c_str(), "wb");
+    targetIfo = fopen(dirSource.absoluteFilePath(dictionaryName + ".ifo").toStdString().c_str(), "wb");
 
     //uint32_t를 사용함(크기가 클 수 있으므로...)
     uint32_t pos =0;
+    uint32_t tmpglong = 0;
 
     QMapIterator<int, QString> defsItor(mapDefinitions);
     while(defsItor.hasNext()){
         defsItor.next();
 
+    qDebug()<<"defsItor.value().toUtf8().length(): "<< defsItor.value().toUtf8().length();
+    qDebug()<<"strlen(defsItor.value().toUtf8().data()): "<< strlen(defsItor.value().toUtf8().data());
+        definition_len = defsItor.value().toUtf8().length();
+        fwrite(defsItor.value().toUtf8().data(), 1, definition_len, targetDefinition);
         pos = ftell(targetDefinition);
-        definition_len = defsItor.value().length();
-        fwrite(defsItor.value().toStdString().c_str(), 1, definition_len, targetDefinition);
 
         //본문의 일련번호에 해당하는 표제어들을 찾아 순환하면서 스트림(outToTitle)에 써 넣는다.
         QListIterator<QString> wordsItor(mltmapTitles.keys(defsItor.key()));
         while(wordsItor.hasNext()){
             QString txt = wordsItor.next();
 
-            fwrite(txt.toStdString().c_str(), sizeof(char), strlen(txt.toStdString().c_str())+1, targetTitle);
+            fwrite(txt.toUtf8().data(), sizeof(char), strlen(txt.toUtf8().data())+1, targetTitle);
 
             //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터,
             //content의 글자수를 써 넣는다.
+
             //tmpglong = htonl(pos);
-            fwrite(&(pos), sizeof(uint32_t), 1, targetTitle);
+            tmpglong = qToBigEndian(pos);
+                        tmpglong = (uint32_t)qFromBigEndian(8045780);
+                        qDebug()<<"tmpglong"<<tmpglong;
+            fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
             //tmpglong = htonl(definition_len);
-            fwrite(&(definition_len), sizeof(uint32_t), 1, targetTitle);
+            tmpglong = qToBigEndian(definition_len);
+            fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
         }
     }
     fclose(targetTitle);
     fclose(targetDefinition);
 
     struct stat info;
-    stat("D:/QtProjects/content/dictionary6/merge/SKKUC.dict", &info);
+    stat(dirSource.absoluteFilePath(dictionaryName + ".idx").toStdString().c_str(), &info);
 
     //Ifo파일 작성
-    fprintf(targetIfo, "StarDict's dict ifo file\nversion=2.4.2\nwordcount=%d\nidxfilesize=%ld\nbookname=SKKU\nsametypesequence=h\n",mltmapTitles.keys().count(), &info.st_size);
+    fprintf(targetIfo, "StarDict's dict ifo file\nversion=2.4.2\nwordcount=%d\nidxfilesize=%ld\nbookname=SKKUD\nsametypesequence=h\n",mltmapTitles.keys().count(), &info.st_size);
 
     fclose(targetIfo);
+
+    loadDict(dictionaryName);
 }
