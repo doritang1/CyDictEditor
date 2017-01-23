@@ -842,9 +842,10 @@ void MainWindow::on_pushButton_clicked()
 
     qDebug()<<"defsItor.value().toUtf8().length(): "<< defsItor.value().toUtf8().length();
     qDebug()<<"strlen(defsItor.value().toUtf8().data()): "<< strlen(defsItor.value().toUtf8().data());
+        pos = ftell(targetDefinition);
         definition_len = defsItor.value().toUtf8().length();
         fwrite(defsItor.value().toUtf8().data(), 1, definition_len, targetDefinition);
-        pos = ftell(targetDefinition);
+
 
         //본문의 일련번호에 해당하는 표제어들을 찾아 순환하면서 스트림(outToTitle)에 써 넣는다.
         QListIterator<QString> wordsItor(mltmapTitles.keys(defsItor.key()));
@@ -858,7 +859,7 @@ void MainWindow::on_pushButton_clicked()
 
             //tmpglong = htonl(pos);
             tmpglong = qToBigEndian(pos);
-                        tmpglong = (uint32_t)qFromBigEndian(8045780);
+                        //tmpglong = qFromBigEndian(pos);
                         qDebug()<<"tmpglong"<<tmpglong;
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
             //tmpglong = htonl(definition_len);
