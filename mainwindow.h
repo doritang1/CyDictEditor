@@ -76,6 +76,7 @@ private:
 
     void createDict(QString &dictionaryName);
     void loadDict(QString &strFilePath);
+    void loadDictD(QString &strFilePath);
 };
 
 #endif // MAINWINDOW_H

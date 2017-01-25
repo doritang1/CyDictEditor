@@ -839,9 +839,6 @@ void MainWindow::on_pushButton_clicked()
     QMapIterator<int, QString> defsItor(mapDefinitions);
     while(defsItor.hasNext()){
         defsItor.next();
-
-    qDebug()<<"defsItor.value().toUtf8().length(): "<< defsItor.value().toUtf8().length();
-    qDebug()<<"strlen(defsItor.value().toUtf8().data()): "<< strlen(defsItor.value().toUtf8().data());
         pos = ftell(targetDefinition);
         definition_len = defsItor.value().toUtf8().length();
         fwrite(defsItor.value().toUtf8().data(), 1, definition_len, targetDefinition);
@@ -857,12 +854,8 @@ void MainWindow::on_pushButton_clicked()
             //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터,
             //content의 글자수를 써 넣는다.
 
-            //tmpglong = htonl(pos);
             tmpglong = qToBigEndian(pos);
-                        //tmpglong = qFromBigEndian(pos);
-                        qDebug()<<"tmpglong"<<tmpglong;
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
-            //tmpglong = htonl(definition_len);
             tmpglong = qToBigEndian(definition_len);
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
         }
@@ -878,5 +871,53 @@ void MainWindow::on_pushButton_clicked()
 
     fclose(targetIfo);
 
-    loadDict(dictionaryName);
+    loadDictD(dictionaryName);
+}
+
+void MainWindow::loadDictD(QString &strFilePath)
+{
+    QFile sourceTitle;
+    sourceTitle.setFileName(dirSource.absoluteFilePath(strFilePath + ".idx"));
+    sourceTitle.open(QFile::ReadOnly);
+
+    QByteArray ba;
+    QString Title;
+
+    uint32_t startPos;
+    uint32_t size;
+
+    int pos = 0;
+    char *data;
+    _position offset;//title파일에 기록된 content의 포인터와 길이를 받아오기 위한 구조체
+    while(!sourceTitle.atEnd())
+    {
+        ba = sourceTitle.readLine();
+        Title = QString::fromUtf8(ba);
+        pos += ba.size();
+        sourceTitle.seek(pos);
+
+
+        sourceTitle.read(data, sizeof(uint32_t));
+        qDebug()<<data<<"jhjk";
+        memcpy(&startPos, &data, sizeof(uint32_t));
+        offset.contentBegin = qFromBigEndian(startPos);
+        pos += sizeof(uint32_t);
+        sourceTitle.seek(pos);
+
+        sourceTitle.read(data, sizeof(uint32_t));
+        memcpy(&size, &data, sizeof(uint32_t));
+        offset.contentLength = qFromBigEndian(size);
+        pos += sizeof(uint32_t);
+        sourceTitle.seek(pos);
+
+        mltmapWords.insert(Title,offset); //string과 구조체를 저장하는 자료구조(map)
+    }
+
+    sourceTitle.close();
+
+    //모델을 생성하여 listView와 연결한다.
+    modelWords = new QStringListModel(this);
+    modelWords->setStringList((QStringList)mltmapWords.keys());
+    ui->listViewWordFromFile->setModel(modelWords);
+    ui->listViewWordFromFile->setEditTriggers(QAbstractItemView::NoEditTriggers);
 }
