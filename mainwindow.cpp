@@ -34,9 +34,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -613,7 +613,7 @@ void MainWindow::on_listViewWordFromMap_clicked(const QModelIndex &index)
     QList<int> words = mltmapTitles.values(word);
     QListIterator<int> id(words);
     while(id.hasNext()){
-        ui->plainTextEditDefinition->appendHtml(mapDefinitions.value(id.next()));
+        ui->plainTextEditDefinition->appendPlainText(mapDefinitions.value(id.next()));
     }
 }
 
@@ -630,9 +630,9 @@ void MainWindow::createDict(QString &dictionaryName)
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
 
     QFile targetTitle;
     QFile targetDefinition;
@@ -750,12 +750,12 @@ void MainWindow::loadDict(QString &strFilePath)
         QByteArray ba;
         inFromTitle >> ba;
         Title = QString::fromUtf8(ba);
-
+qDebug()<<Title;
         inFromTitle >> tmp;
         offset.contentBegin = qFromBigEndian(tmp);
         inFromTitle >> tmp;
         offset.contentLength = qFromBigEndian(tmp);
-
+qDebug()<<qFromBigEndian(tmp);
         mltmapWords.insert(Title,offset); //string과 구조체를 저장하는 자료구조(map)
     }
 
@@ -806,7 +806,7 @@ void MainWindow::on_listViewWordFromFile_clicked(const QModelIndex &index)
         //현재의 파일 포인터에서 지정된 길이만큼 읽음
         strDefinition = inFromDefinition.read(offset.contentLength);
         //화면에 표시
-        ui->plainTextEditDefinition->appendHtml(strDefinition);
+        ui->plainTextEditDefinition->appendPlainText(strDefinition);
     }
     sourceDefinition.flush();
     sourceDefinition.close();
@@ -818,9 +818,9 @@ void MainWindow::on_pushButton_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
 
     FILE *targetTitle;
     FILE *targetDefinition;
@@ -850,7 +850,7 @@ void MainWindow::on_pushButton_clicked()
             QString txt = wordsItor.next();
 
             fwrite(txt.toUtf8().data(), sizeof(char), strlen(txt.toUtf8().data())+1, targetTitle);
-
+qDebug()<<txt.toUtf8();
             //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터,
             //content의 글자수를 써 넣는다.
 
@@ -858,6 +858,7 @@ void MainWindow::on_pushButton_clicked()
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
             tmpglong = qToBigEndian(definition_len);
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
+qDebug()<<qFromBigEndian(tmpglong);
         }
     }
     fclose(targetTitle);
@@ -880,39 +881,30 @@ void MainWindow::loadDictD(QString &strFilePath)
     sourceTitle.setFileName(dirSource.absoluteFilePath(strFilePath + ".idx"));
     sourceTitle.open(QFile::ReadOnly);
 
-    QByteArray ba;
-    QString Title;
-
-    uint32_t startPos;
-    uint32_t size;
-
-    int pos = 0;
-    char *data;
+    QByteArray data = sourceTitle.readAll();
     _position offset;//title파일에 기록된 content의 포인터와 길이를 받아오기 위한 구조체
-    while(!sourceTitle.atEnd())
+    for(char *ptr = data.begin(); ptr != data.end(); )
     {
-        ba = sourceTitle.readLine();
-        Title = QString::fromUtf8(ba);
-        pos += ba.size();
-        sourceTitle.seek(pos);
+        size_t wordLen = strlen(ptr);
+        QString Title = QString::fromUtf8(ptr);
+qDebug()<<Title;
+        ptr += wordLen + 1;
 
+        uint32_t articleOffset;
+        uint32_t articleSize;
 
-        sourceTitle.read(data, sizeof(uint32_t));
-        qDebug()<<data<<"jhjk";
-        memcpy(&startPos, &data, sizeof(uint32_t));
-        offset.contentBegin = qFromBigEndian(startPos);
-        pos += sizeof(uint32_t);
-        sourceTitle.seek(pos);
+        memcpy(&articleOffset, ptr, sizeof(uint32_t));
+        ptr += sizeof(uint32_t);
 
-        sourceTitle.read(data, sizeof(uint32_t));
-        memcpy(&size, &data, sizeof(uint32_t));
-        offset.contentLength = qFromBigEndian(size);
-        pos += sizeof(uint32_t);
-        sourceTitle.seek(pos);
+        memcpy(&articleSize, ptr, sizeof(uint32_t));
+        ptr += sizeof(uint32_t);
 
-        mltmapWords.insert(Title,offset); //string과 구조체를 저장하는 자료구조(map)
+        offset.contentBegin = qFromBigEndian(articleOffset);
+        offset.contentLength = qFromBigEndian(articleSize);
+qDebug()<<qFromBigEndian(articleSize);
+        mltmapWords.insert(Title, offset);//string과 구조체를 저장하는 자료구조(map)
     }
-
+    sourceTitle.flush();
     sourceTitle.close();
 
     //모델을 생성하여 listView와 연결한다.
