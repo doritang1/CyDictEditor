@@ -34,9 +34,9 @@ void MainWindow::on_toolButtonFileSelect_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
     ui->lineEditSourceFile->setText(dirSource.absolutePath());
 
     //filter를 적용하여 작업 Directory 안의 파일들을 추려낸다.
@@ -197,7 +197,7 @@ bool MainWindow::validateHtml(QString *strHtml)
             *strHtml = strHtml->remove(QRegExp("<param[^>]*>"));
         }//Object, param
         else if(tokens.at(i) == "p" || tokens.at(i) == "b"){
-            //qDebug()<<*strHtml;
+
             *strHtml = strHtml->replace("<P>", "<p>"); //P가 대문자
             *strHtml = strHtml->replace("</P>", "</p>");
             if(strHtml->contains("<p>&nbsp;")){ //"<p>&nbsp;"가 있으면
@@ -613,7 +613,7 @@ void MainWindow::on_listViewWordFromMap_clicked(const QModelIndex &index)
     QList<int> words = mltmapTitles.values(word);
     QListIterator<int> id(words);
     while(id.hasNext()){
-        ui->plainTextEditDefinition->appendPlainText(mapDefinitions.value(id.next()));
+        ui->plainTextEditDefinition->appendHtml(mapDefinitions.value(id.next()));
     }
 }
 
@@ -630,9 +630,9 @@ void MainWindow::createDict(QString &dictionaryName)
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
 
     QFile targetTitle;
     QFile targetDefinition;
@@ -750,12 +750,12 @@ void MainWindow::loadDict(QString &strFilePath)
         QByteArray ba;
         inFromTitle >> ba;
         Title = QString::fromUtf8(ba);
-qDebug()<<Title;
+
         inFromTitle >> tmp;
         offset.contentBegin = qFromBigEndian(tmp);
         inFromTitle >> tmp;
         offset.contentLength = qFromBigEndian(tmp);
-qDebug()<<qFromBigEndian(tmp);
+
         mltmapWords.insert(Title,offset); //string과 구조체를 저장하는 자료구조(map)
     }
 
@@ -803,10 +803,12 @@ void MainWindow::on_listViewWordFromFile_clicked(const QModelIndex &index)
         QString strDefinition;
         //시작위치(읽을 위치)로 파일 포인터를 이동
         inFromDefinition.seek(offset.contentBegin);
+
         //현재의 파일 포인터에서 지정된 길이만큼 읽음
-        strDefinition = inFromDefinition.read(offset.contentLength);
+        //stream은 앞쪽에 쓸데 없는 정보가 붙으므로 device에서 직접 읽어온다.
+        strDefinition = inFromDefinition.device()->read(offset.contentLength);
         //화면에 표시
-        ui->plainTextEditDefinition->appendPlainText(strDefinition);
+        ui->plainTextEditDefinition->appendHtml(strDefinition);
     }
     sourceDefinition.flush();
     sourceDefinition.close();
@@ -818,9 +820,9 @@ void MainWindow::on_pushButton_clicked()
     //원래
     //:dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "../../", QFileDialog::ShowDirsOnly));
     //회사에서:
-    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "D:/QtProjects/content/dictionary6/merge", QFileDialog::ShowDirsOnly));
     //집에서:
-    //dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
+    dirSource.setCurrent(QFileDialog::getExistingDirectory(this, tr("Select Directory"), "C:/CyberK/QtProjects/dictionary6/merge", QFileDialog::ShowDirsOnly));
 
     FILE *targetTitle;
     FILE *targetDefinition;
@@ -850,7 +852,7 @@ void MainWindow::on_pushButton_clicked()
             QString txt = wordsItor.next();
 
             fwrite(txt.toUtf8().data(), sizeof(char), strlen(txt.toUtf8().data())+1, targetTitle);
-qDebug()<<txt.toUtf8();
+
             //인덱스파일의 스트림(outToTitle)에 본문파일의 스트림(outToContent)의 파일포인터,
             //content의 글자수를 써 넣는다.
 
@@ -858,7 +860,6 @@ qDebug()<<txt.toUtf8();
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
             tmpglong = qToBigEndian(definition_len);
             fwrite(&tmpglong, sizeof(uint32_t), 1, targetTitle);
-qDebug()<<qFromBigEndian(tmpglong);
         }
     }
     fclose(targetTitle);
@@ -887,7 +888,7 @@ void MainWindow::loadDictD(QString &strFilePath)
     {
         size_t wordLen = strlen(ptr);
         QString Title = QString::fromUtf8(ptr);
-qDebug()<<Title;
+
         ptr += wordLen + 1;
 
         uint32_t articleOffset;
@@ -901,7 +902,7 @@ qDebug()<<Title;
 
         offset.contentBegin = qFromBigEndian(articleOffset);
         offset.contentLength = qFromBigEndian(articleSize);
-qDebug()<<qFromBigEndian(articleSize);
+
         mltmapWords.insert(Title, offset);//string과 구조체를 저장하는 자료구조(map)
     }
     sourceTitle.flush();
